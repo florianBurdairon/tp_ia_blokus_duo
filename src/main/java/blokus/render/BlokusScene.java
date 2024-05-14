@@ -3,6 +3,8 @@ package blokus.render;
 import blokus.logic.Grid;
 import blokus.logic.Piece;
 import blokus.logic.Position;
+import blokus.player.PlayerInterface;
+import blokus.player.ThreeDimensionalPlayer;
 import javafx.application.Application;
 import javafx.geometry.Point3D;
 import javafx.scene.*;
@@ -13,6 +15,7 @@ import javafx.scene.shape.Box;
 import javafx.stage.Stage;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 public class BlokusScene extends Application {
     private Scene scene;
@@ -66,6 +69,8 @@ public class BlokusScene extends Application {
         primaryStage.setTitle("Blokus Duo");
         primaryStage.setScene(scene);
         primaryStage.show();
+
+        grid.start();
     }
 
     private SubScene setUp3DScene(){
@@ -78,7 +83,22 @@ public class BlokusScene extends Application {
         buildAxes();
 
         world.getChildren().clear();
-        grid = new Grid();
+
+        ThreeDimensionalPlayer p1 = new ThreeDimensionalPlayer();
+        p1.askForPlay = new Consumer<List<Piece>>() {
+            @Override
+            public void accept(List<Piece> pieces) {
+                Piece piece = pieces.getLast();
+                Position pos = new Position(7, 7);
+                System.out.println(p1.playPieceAt(piece, pos));
+                for (Position cell : piece.getCases()) {
+                    gridRenderer.updatePos(new Position(pos.x + cell.x, pos.y + cell.y));
+                }
+            }
+        };
+        PlayerInterface p2 = new ThreeDimensionalPlayer();
+
+        grid = new Grid(p1, p2);
         gridRenderer = new GridRenderer(grid);
         gridRenderer.renderInto(world);
         gridRenderer.registerEvents(scene);
@@ -94,6 +114,7 @@ public class BlokusScene extends Application {
                     pos.x, pos.y), 0.5, Grid.PlayerColor.ORANGE);
             pos.y += 3 * CellRenderer.cellSize;
             pieceRenderer.renderInto(world);
+            pieceRenderer.registerEvents(scene);
         }
 
         List<Piece> p2Pieces = grid.getP2Pieces();
@@ -107,10 +128,11 @@ public class BlokusScene extends Application {
                     pos.x, pos.y), 0.5, Grid.PlayerColor.PURPLE);
             pos.y += 3 * CellRenderer.cellSize;
             pieceRenderer.renderInto(world);
+            pieceRenderer.registerEvents(scene);
         }
 
         SubScene subScene = new SubScene(root, 800, 800, true, SceneAntialiasing.BALANCED);
-        subScene.setFill(Color.GREY);
+        subScene.setFill(Color.SKYBLUE);
         subScene.setCamera(camera);
 
         return subScene;
@@ -127,6 +149,7 @@ public class BlokusScene extends Application {
         camera.setNearClip(CAMERA_NEAR_CLIP);
         camera.setFarClip(CAMERA_FAR_CLIP);
         camera.setTranslateZ(CAMERA_INITIAL_DISTANCE);
+        System.out.println("FOV: " + camera.getFieldOfView());
         cameraXForm.ry.setAngle(CAMERA_INITIAL_Y_ANGLE);
         cameraXForm.rx.setAngle(CAMERA_INITIAL_X_ANGLE);
     }
