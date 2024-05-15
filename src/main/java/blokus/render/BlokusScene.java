@@ -5,10 +5,12 @@ import blokus.logic.Piece;
 import blokus.logic.Position;
 import blokus.player.PlayerInterface;
 import blokus.player.Player;
+import blokus.utils.Utils;
 import javafx.application.Application;
 import javafx.geometry.Point3D;
 import javafx.geometry.Pos;
 import javafx.scene.*;
+import javafx.scene.input.MouseButton;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.PhongMaterial;
@@ -164,7 +166,7 @@ public class BlokusScene extends Application {
 
         world.getChildren().add(tableMeshView);
 
-        SubScene subScene = new SubScene(root, 800, 800, true, SceneAntialiasing.BALANCED);
+        SubScene subScene = new SubScene(root, 1000, 800, true, SceneAntialiasing.BALANCED);
         subScene.setFill(Color.SKYBLUE);
         subScene.setCamera(camera);
 
@@ -271,20 +273,32 @@ public class BlokusScene extends Application {
 
     private void handleMouse(Scene scene) {
         scene.setOnMouseClicked(me -> {
-            if (canPlay && isHoverGrid && PlayerInput.getInstance().getSelectedPiece() != null) {
-                PieceRenderer pieceRenderer = PlayerInput.getInstance().getSelectedPiece();
-                Piece piecePlayed = pieceRenderer.getPiece();
+            if (!me.isShiftDown()) {
+                if (canPlay && isHoverGrid && PlayerInput.getInstance().getSelectedPiece() != null) {
+                    if (me.getButton().equals(MouseButton.PRIMARY)) {
+                        PieceRenderer pieceRenderer = PlayerInput.getInstance().getSelectedPiece();
+                        Piece piecePlayed = pieceRenderer.getPiece();
 
-                if (grid.placePiece(piecePlayed, pieceRenderer.getPos(), Grid.Angle.DEG_0, false)) {
-                    System.out.println("Player played at " + pieceRenderer.getPos());
-                    updatePieces();
-                    canPlay = false;
-                } else {
-                    System.out.println("Player can not play at " + pieceRenderer.getPos() + ", reselect a piece");
-                }
-                PlayerInput.getInstance().unselectPiece();
-                for(Position pieceCase : piecePlayed.getCases()){
-                    gridRenderer.updatePos(pieceRenderer.getPos().add(pieceCase));
+                        if (grid.placePiece(piecePlayed, pieceRenderer.getPos(), PlayerInput.getInstance().getRotation(), PlayerInput.getInstance().hasSymmetry())) {
+                            System.out.println("Player played at " + pieceRenderer.getPos());
+                            updatePieces();
+                            canPlay = false;
+                            for (Position pieceCase : Utils.transform(
+                                    piecePlayed.getCases(),
+                                    PlayerInput.getInstance().getRotation(),
+                                    PlayerInput.getInstance().hasSymmetry())) {
+                                gridRenderer.updatePos(pieceRenderer.getPos().add(pieceCase));
+                            }
+                        } else {
+                            System.out.println("Player can not play at " + pieceRenderer.getPos() + ", reselect a piece");
+                        }
+                        PlayerInput.getInstance().unselectPiece();
+                    }
+                    else if (me.getButton().equals(MouseButton.SECONDARY)) {
+                        PlayerInput.getInstance().toggleSymmetry();
+                    } else {
+                        System.out.println("Taken click into account but couldn't process it: " + me.getButton());
+                    }
                 }
             }
         });
@@ -295,30 +309,31 @@ public class BlokusScene extends Application {
             mouseOldY = me.getSceneY();
 
         });
-        scene.setOnScroll(se -> camera.setTranslateZ(camera.getTranslateZ() + se.getDeltaY()*SCROLL_SPEED));
+        scene.setOnScroll(se -> {
+            if (se.isShiftDown())
+            {
+                camera.setTranslateZ(camera.getTranslateZ() + se.getDeltaY()*SCROLL_SPEED);
+            }
+            else {
+                PlayerInput.getInstance().addRotation(se.getDeltaY() > 0 ? Grid.Angle.DEG_90 : Grid.Angle.DEG_270);
+            }
+        });
         scene.setOnMouseDragged(me -> {
-            mouseOldX = mousePosX;
-            mouseOldY = mousePosY;
-            mousePosX = me.getSceneX();
-            mousePosY = me.getSceneY();
-            mouseDeltaX = (mousePosX - mouseOldX);
-            mouseDeltaY = (mousePosY - mouseOldY);
-
-            double modifier = 1.0;
-
-            if (me.isControlDown()) {
-                modifier = CONTROL_MULTIPLIER;
-            }
             if (me.isShiftDown()) {
-                modifier = SHIFT_MULTIPLIER;
-            }
-            if (me.isPrimaryButtonDown()) {
-                cameraXForm.ry.setAngle(cameraXForm.ry.getAngle() - mouseDeltaX*MOUSE_SPEED*modifier*ROTATION_SPEED);
-                cameraXForm.rx.setAngle(cameraXForm.rx.getAngle() + mouseDeltaY*MOUSE_SPEED*modifier*ROTATION_SPEED);
-            }
-            else if (me.isSecondaryButtonDown() || me.isMiddleButtonDown()) {
-                cameraXForm2.t.setX(cameraXForm2.t.getX() + mouseDeltaX*MOUSE_SPEED*modifier*TRACK_SPEED);
-                cameraXForm2.t.setY(cameraXForm2.t.getY() + mouseDeltaY*MOUSE_SPEED*modifier*TRACK_SPEED);
+                mouseOldX = mousePosX;
+                mouseOldY = mousePosY;
+                mousePosX = me.getSceneX();
+                mousePosY = me.getSceneY();
+                mouseDeltaX = (mousePosX - mouseOldX);
+                mouseDeltaY = (mousePosY - mouseOldY);
+
+                if (me.isPrimaryButtonDown()) {
+                    cameraXForm.ry.setAngle(cameraXForm.ry.getAngle() - mouseDeltaX * MOUSE_SPEED * ROTATION_SPEED);
+                    cameraXForm.rx.setAngle(cameraXForm.rx.getAngle() + mouseDeltaY * MOUSE_SPEED * ROTATION_SPEED);
+                } else if (me.isSecondaryButtonDown() || me.isMiddleButtonDown()) {
+                    cameraXForm2.t.setX(cameraXForm2.t.getX() + mouseDeltaX * MOUSE_SPEED * TRACK_SPEED);
+                    cameraXForm2.t.setY(cameraXForm2.t.getY() + mouseDeltaY * MOUSE_SPEED * TRACK_SPEED);
+                }
             }
         });
     }

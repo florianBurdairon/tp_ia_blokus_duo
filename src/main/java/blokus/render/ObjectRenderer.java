@@ -34,6 +34,7 @@ public abstract class ObjectRenderer extends Group {
 
     public void reset(){
         world.getChildren().clear();
+        world.reset();
         buildObject();
         //this.parent.getChildren().add(world);
     }

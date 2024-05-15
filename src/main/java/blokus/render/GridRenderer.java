@@ -72,14 +72,14 @@ public class GridRenderer extends ObjectRenderer {
         } else if (grid.getCase(pos.x, pos.y) == Grid.PlayerColor.ORANGE) {
             PieceCellRenderer pieceCellRenderer = new PieceCellRenderer(
                     new Position(pos.x - Grid.width / 2, pos.y - Grid.height / 2),
-                    Color.DARKORANGE,
-                    Color.ORANGE);
+                    Color.rgb(255, 148, 0),
+                    Color.rgb(255, 180, 76));
             pieceCellRenderer.renderInto(world);
         } else {
             PieceCellRenderer pieceCellRenderer = new PieceCellRenderer(
                     new Position(pos.x - Grid.width / 2, pos.y - Grid.height / 2),
-                    Color.PURPLE,
-                    Color.DEEPPINK);
+                    Color.rgb(167, 0, 171),
+                    Color.rgb(184, 70, 187));
             pieceCellRenderer.renderInto(world);
         }
     }

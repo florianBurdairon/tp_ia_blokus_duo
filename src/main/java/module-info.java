@@ -5,4 +5,5 @@ module blokus {
     exports blokus.render;
     exports blokus.logic;
     exports blokus.player;
+    exports blokus.utils;
 }

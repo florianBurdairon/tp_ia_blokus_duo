@@ -10,6 +10,8 @@ public class PlayerInput {
     private Position mousePos = new Position(0, 0);
 
     private PieceRenderer selectedPiece;
+    private Grid.Angle rotation = Grid.Angle.DEG_0;
+    private boolean symmetry = false;
 
     private PlayerInput(){}
 
@@ -38,6 +40,8 @@ public class PlayerInput {
 
     public void unselectPiece(){
         BlokusScene.tempGroup.getChildren().clear();
+        rotation = Grid.Angle.DEG_0;
+        symmetry = false;
         selectedPiece = null;
     }
 
@@ -50,5 +54,27 @@ public class PlayerInput {
         if (selectedPiece != null) {
             selectedPiece.moveToCoords(mousePos);
         }
+    }
+
+    public void addRotation(Grid.Angle angle){
+        for (int i = 0; i < angle.ordinal(); i++) {
+            rotation = rotation.rotate90();
+        }
+        System.out.println("Rotation from PI: " + rotation);
+        selectedPiece.applyRotation(rotation);
+    }
+
+    public Grid.Angle getRotation(){
+        return rotation;
+    }
+
+    public void toggleSymmetry(){
+        System.out.println("Applied from PlayerInput");
+        symmetry = !symmetry;
+        selectedPiece.applySymmetry();
+    }
+
+    public boolean hasSymmetry(){
+        return symmetry;
     }
 }

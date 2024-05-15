@@ -10,11 +10,11 @@ import java.util.List;
 
 public class Piece implements Serializable {
     private final int caseNumber;
-    private final List<Position> cases;
+    private final ArrayList<Position> cases;
 
     public Piece(int caseNumber, List<Position> cases) {
         this.caseNumber = caseNumber;
-        this.cases = cases;
+        this.cases = new ArrayList<>(cases);
     }
 
     public int getCaseNumber() {
@@ -22,7 +22,11 @@ public class Piece implements Serializable {
     }
 
     public List<Position> getCases() {
-        return cases;
+        List<Position> clonedCases = new ArrayList<>();
+        for (Position c : cases) {
+            clonedCases.add(c.clone());
+        }
+        return clonedCases;
     }
 
     //Deserialization of piece-set.json file to get all the pieces

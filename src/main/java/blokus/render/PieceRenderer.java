@@ -3,12 +3,15 @@ package blokus.render;
 import blokus.logic.Grid;
 import blokus.logic.Piece;
 import blokus.logic.Position;
+import blokus.utils.Utils;
 import javafx.geometry.Point3D;
 import javafx.scene.Scene;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.paint.Color;
 import javafx.scene.transform.Scale;
 import javafx.scene.transform.Translate;
+
+import java.util.List;
 
 public class PieceRenderer extends ObjectRenderer {
 
@@ -17,13 +20,21 @@ public class PieceRenderer extends ObjectRenderer {
     private final Grid.PlayerColor playerColor;
     private final double scale;
     private final boolean isHollow;
+    private Grid.Angle angle;
+    private boolean symmetry;
 
-    public PieceRenderer(Piece piece, Position pos, double scale, Grid.PlayerColor playerColor, boolean isHollow) {
+    public PieceRenderer(Piece piece, Position pos, double scale, Grid.PlayerColor playerColor, boolean isHollow, Grid.Angle angle, boolean symmetry) {
         this.piece = piece;
         this.pos = pos;
         this.scale = scale;
         this.playerColor = playerColor;
         this.isHollow = isHollow;
+        this.angle = angle;
+        this.symmetry = symmetry;
+    }
+
+    public PieceRenderer(Piece piece, Position pos, double scale, Grid.PlayerColor playerColor, boolean isHollow) {
+        this(piece, pos, scale, playerColor, isHollow, Grid.Angle.DEG_0, false);
     }
 
     public PieceRenderer(Piece piece, Position pos, double scale, Grid.PlayerColor playerColor) {
@@ -32,7 +43,18 @@ public class PieceRenderer extends ObjectRenderer {
 
     void buildObject()
     {
-        for(Position casePos : piece.getCases()) {
+        renderCells();
+        world.setTranslateX(pos.x);
+        world.setTranslateZ(pos.y);
+        world.setScale(CellRenderer.cellSize*scale);
+    }
+
+    private void renderCells()
+    {
+        world.getChildren().clear();
+        List<Position> cases = symmetry ? Utils.symmetry(piece.getCases()) : piece.getCases();
+        cases = Utils.rotate(cases, angle);
+        for(Position casePos : cases) {
             Position correctPos = new Position(casePos.x - Grid.width/2, casePos.y - Grid.height/2);
             PieceCellRenderer pieceCellRenderer = new PieceCellRenderer(
                     correctPos,
@@ -43,9 +65,6 @@ public class PieceRenderer extends ObjectRenderer {
             pieceCellRenderer.setScaleZ(scale);
             pieceCellRenderer.renderInto(world);
         }
-        world.setTranslateX(pos.x);
-        world.setTranslateZ(pos.y);
-        world.setScale(CellRenderer.cellSize*scale);
     }
 
     public Color getDarkColor(){
@@ -65,6 +84,18 @@ public class PieceRenderer extends ObjectRenderer {
         pos = newPos;
         world.setTranslateX(pos.x * CellRenderer.cellSize*scale);
         world.setTranslateZ(pos.y * CellRenderer.cellSize*scale);
+    }
+
+    public void applyRotation(Grid.Angle newAngle) {
+        System.out.println("Rotation from renderer: " + newAngle);
+        angle = newAngle;
+        renderCells();
+    }
+
+    public void applySymmetry() {
+        System.out.println("Applied from renderer");
+        symmetry = !symmetry;
+        renderCells();
     }
 
     public Piece getPiece()

@@ -1,6 +1,7 @@
 package blokus.logic;
 
 import blokus.player.PlayerInterface;
+import blokus.utils.Utils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -8,6 +9,9 @@ import java.util.List;
 public class Grid {
     public static final int width = 14;
     public static final int height = 14;
+
+    private final int bonusAllPiecesPlaced = 15;
+    private final int bonusSmallPiece = 5;
 
     private final PlayerColor[][] grid;
 
@@ -18,7 +22,7 @@ public class Grid {
     private final List<Piece> p2Pieces;
 
     private final Position player1Start = new Position(4, 4);
-    private final Position player2Start = new Position(width - 4, height - 4);
+    private final Position player2Start = new Position(width - 4 - 1, height - 4 - 1);
 
     private Piece player1LastPiece = null;
     private Piece player2LastPiece = null;
@@ -52,7 +56,7 @@ public class Grid {
 
     public boolean placePiece(Piece piece, Position position, Angle angle, boolean doSymmetry) {
         if (canFit(piece, position, playerTurn, angle, doSymmetry)) {
-            for (Position casePos : piece.getCases()) {
+            for (Position casePos : Utils.transform(piece.getCases(), angle, doSymmetry)) {
                 int x = position.x + casePos.x;
                 int y = position.y + casePos.y;
                 grid[x][y] = playerTurn;
@@ -73,7 +77,7 @@ public class Grid {
     public boolean canFit(Piece piece, Position position, PlayerColor color, Angle angle, boolean doSymmetry) {
         boolean haveOneCorner = false;
         try {
-            for (Position casePos : piece.getCases()) {
+            for (Position casePos : Utils.transform(piece.getCases(), angle, doSymmetry)) {
                 int x = position.x + casePos.x;
                 int y = position.y + casePos.y;
 
@@ -121,6 +125,9 @@ public class Grid {
         } catch (ArrayIndexOutOfBoundsException ignored) {
 
         }
+        if (!haveOneCorner) {
+            System.out.println("No corner allow to place here" + position);
+        }
         return haveOneCorner;
     }
 
@@ -129,7 +136,7 @@ public class Grid {
     }
 
     public boolean canPlayerPlay(PlayerColor player) {
-        List<Piece> pieces = new ArrayList<>(playerTurn == PlayerColor.ORANGE ? p1Pieces : p2Pieces);
+        List<Piece> pieces = new ArrayList<>(player == PlayerColor.ORANGE ? p1Pieces : p2Pieces);
         for (Piece piece : pieces) {
             for (int x = 0; x < width; x++) {
                 for (int y = 0; y < height; y++) {
@@ -171,20 +178,33 @@ public class Grid {
     }
 
     public PlayerColor getWinner() {
-        int numberCasePlayer1 = 0;
-        int numberCasePlayer2 = 0;
+        // Bonus if player placed all its pieces
+        int orangeScore = p1Pieces.isEmpty() ? bonusAllPiecesPlaced : 0;
+        int purpleScore = p2Pieces.isEmpty() ? bonusAllPiecesPlaced : 0;
 
+        // Bonus if player ended with the smallest piece
+        if (player1LastPiece.getCaseNumber() == 1) {
+            orangeScore += bonusSmallPiece;
+        }
+        if (player2LastPiece.getCaseNumber() == 1) {
+            purpleScore += bonusSmallPiece;
+        }
+
+        // Minus if player has pieces left
         for (Piece piece : p1Pieces) {
-            numberCasePlayer1 += piece.getCaseNumber();
+            orangeScore -= piece.getCaseNumber();
         }
-
         for (Piece piece : p2Pieces) {
-            numberCasePlayer2 += piece.getCaseNumber();
+            purpleScore -= piece.getCaseNumber();
         }
 
-        if (numberCasePlayer1 > numberCasePlayer2) {
+        System.out.println("Orange score: " + orangeScore);
+        System.out.println("Purple score: " + purpleScore);
+
+        // Winner is biggest score
+        if (orangeScore > purpleScore) {
             return PlayerColor.ORANGE;
-        } else if (numberCasePlayer1 < numberCasePlayer2) {
+        } else if (orangeScore < purpleScore) {
             return PlayerColor.PURPLE;
         } else {
             return PlayerColor.EMPTY;
@@ -255,9 +275,31 @@ public class Grid {
     }
 
     public enum Angle {
-        DEG_0,
-        DEG_90,
-        DEG_180,
-        DEG_270
+        DEG_0 {
+            @Override
+            public Angle rotate90() {
+                return DEG_90;
+            }
+        },
+        DEG_90 {
+            @Override
+            public Angle rotate90() {
+                return DEG_180;
+            }
+        },
+        DEG_180 {
+            @Override
+            public Angle rotate90() {
+                return DEG_270;
+            }
+        },
+        DEG_270 {
+            @Override
+            public Angle rotate90() {
+                return DEG_0;
+            }
+        };
+
+        public abstract Angle rotate90();
     }
 }

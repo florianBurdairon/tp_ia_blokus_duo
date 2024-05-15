@@ -3,7 +3,7 @@ package blokus.logic;
 import java.io.Serializable;
 import java.util.Objects;
 
-public class Position implements Serializable {
+public class Position implements Serializable, Cloneable {
     public int x;
     public int y;
 
@@ -31,5 +31,15 @@ public class Position implements Serializable {
     @Override
     public String toString() {
         return "(" + x + ", " + y + ")";
+    }
+
+    @Override
+    public Position clone() {
+        try {
+            Position position = (Position) super.clone();
+            return new Position(x,y);
+        } catch (CloneNotSupportedException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
