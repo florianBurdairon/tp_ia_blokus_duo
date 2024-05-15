@@ -1,8 +1,8 @@
 package blokus.logic;
 
-import blokus.player.Player;
 import blokus.player.PlayerInterface;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class Grid {
@@ -17,7 +17,14 @@ public class Grid {
     private final List<Piece> p1Pieces;
     private final List<Piece> p2Pieces;
 
+    private final Position player1Start = new Position(4, 4);
+    private final Position player2Start = new Position(width - 4, height - 4);
+
+    private Piece player1LastPiece = null;
+    private Piece player2LastPiece = null;
+
     private PlayerColor playerTurn = PlayerColor.ORANGE;
+    private boolean hasPlayed = false;
 
     public Grid(PlayerInterface p1, PlayerInterface p2) {
         grid = new PlayerColor[width][height];
@@ -35,7 +42,12 @@ public class Grid {
     }
 
     public void start(){
-        p1.play(this);
+        while (!isGameFinished()) {
+            playTurn();
+            playerTurn = playerTurn.next();
+        }
+        System.out.println("Game finished");
+        System.out.println("Winner is " + getWinner());
     }
 
     public boolean placePiece(Piece piece, Position position, Angle angle, boolean doSymmetry) {
@@ -46,42 +58,137 @@ public class Grid {
                 grid[x][y] = playerTurn;
             }
             if (playerTurn == PlayerColor.ORANGE) {
+                player1LastPiece = piece;
                 p1Pieces.remove(piece);
-                playerTurn = PlayerColor.PURPLE;
             } else {
+                player2LastPiece = piece;
                 p2Pieces.remove(piece);
-                playerTurn = PlayerColor.ORANGE;
             }
+            hasPlayed = true;
             return true;
         }
         return false;
     }
 
     public boolean canFit(Piece piece, Position position, PlayerColor color, Angle angle, boolean doSymmetry) {
-        return true;
-//        boolean haveOneCorner = false;
-//        for (Position casePos : piece.getCases()) {
-//            int x = position.x + casePos.x;
-//            int y = position.y + casePos.y;
-//            if (x < 0 || x >= width || y < 0 || y >= height) {
-//                return false;
-//            }
-//            if (grid[x][y] != PlayerColor.EMPTY) {
-//                return false;
-//            }
-//            for(int i = 1; i < 3; i++) {
-//                for (int j = 1; j < 3; j++) {
-//                    x += (int) Math.pow(-1, i);
-//                    y += (int) Math.pow(-1, j);
-//                    if (x >= 0 && x < width && y >= 0 && y < height) {
-//                        if (grid[x][y] == color) {
-//                            haveOneCorner = true;
-//                        }
-//                    }
-//                }
-//            }
-//        }
-//        return haveOneCorner;
+        boolean haveOneCorner = false;
+        try {
+            for (Position casePos : piece.getCases()) {
+                int x = position.x + casePos.x;
+                int y = position.y + casePos.y;
+
+                // Check if piece is on the starting points
+                if(color == PlayerColor.ORANGE && player1LastPiece == null  && x == player1Start.x && y == player1Start.y) {
+                    System.out.println("Place ORANGE on start point (" + x + ", " + y + ")");
+                    return true;
+                }
+                if(color == PlayerColor.PURPLE && player2LastPiece == null  && x == player2Start.x && y == player2Start.y) {
+                    System.out.println("Place PURPLE on start point (" + x + ", " + y + ")");
+                    return true;
+                }
+
+                // Check if piece is on the grid
+                if (x < 0 || x >= width || y < 0 || y >= height) {
+                    System.out.println("Piece out of grid (" + x + ", " + y + ")");
+                    return false;
+                }
+
+                // Check if piece is on a taken case
+                if (grid[x][y] != PlayerColor.EMPTY) {
+                    System.out.println("Piece on taken case (" + x + ", " + y + ")");
+                    return false;
+                }
+
+                for(int i = -1; i < 2; i += 2) {
+                    for (int j = -1; j < 2; j +=2) {
+                        int xDiag = x + i;
+                        int yDiag = y + j;
+
+                        // Check if piece has a corner with a piece of the same color
+                        if (xDiag >= 0 && xDiag < width && yDiag >= 0 && yDiag < height) {
+                            if (grid[xDiag][yDiag] == color) {
+                                haveOneCorner = true;
+                            }
+                        }
+                    }
+                    // Check if piece has a border with a piece of the same color
+                    if (x + i >= 0 && x + i < width && y + i >= 0 && y + i < height && (grid[x + i][y] == color || grid[x][y + i] == color)) {
+                        System.out.println("Piece has a border with a piece of the same color (" + x + ", " + y + ")");
+                        return false;
+                    }
+                }
+            }
+        } catch (ArrayIndexOutOfBoundsException ignored) {
+
+        }
+        return haveOneCorner;
+    }
+
+    public boolean canCurrentPlayerPlay() {
+        return canPlayerPlay(playerTurn);
+    }
+
+    public boolean canPlayerPlay(PlayerColor player) {
+        List<Piece> pieces = new ArrayList<>(playerTurn == PlayerColor.ORANGE ? p1Pieces : p2Pieces);
+        for (Piece piece : pieces) {
+            for (int x = 0; x < width; x++) {
+                for (int y = 0; y < height; y++) {
+                    for (Angle angle : Angle.values()) {
+                        if (
+                                grid[x][y] == PlayerColor.EMPTY
+                                && (canFit(piece, new Position(x, y), playerTurn, angle, true)
+                                || canFit(piece, new Position(x, y), playerTurn, angle, true))
+                        ) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    public void playTurn() {
+        if (canCurrentPlayerPlay()) {
+            if (playerTurn == PlayerColor.ORANGE) {
+                p1.play(this);
+            } else {
+                p2.play(this);
+            }
+            while (!hasPlayed) {
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            hasPlayed = false;
+        }
+    }
+
+    public boolean isGameFinished() {
+        return !canPlayerPlay(PlayerColor.ORANGE) && !canPlayerPlay(PlayerColor.PURPLE);
+    }
+
+    public PlayerColor getWinner() {
+        int numberCasePlayer1 = 0;
+        int numberCasePlayer2 = 0;
+
+        for (Piece piece : p1Pieces) {
+            numberCasePlayer1 += piece.getCaseNumber();
+        }
+
+        for (Piece piece : p2Pieces) {
+            numberCasePlayer2 += piece.getCaseNumber();
+        }
+
+        if (numberCasePlayer1 > numberCasePlayer2) {
+            return PlayerColor.ORANGE;
+        } else if (numberCasePlayer1 < numberCasePlayer2) {
+            return PlayerColor.PURPLE;
+        } else {
+            return PlayerColor.EMPTY;
+        }
     }
 
     public PlayerColor getCase(int x, int y) {
@@ -93,17 +200,58 @@ public class Grid {
     }
 
     public List<Piece> getP1Pieces() {
-        return p1Pieces;
+        return p1Pieces;    
     }
 
     public List<Piece> getP2Pieces() {
         return p2Pieces;
     }
 
+    public PlayerInterface getP1() {
+        return p1;
+    }
+
+    public PlayerInterface getP2() {
+        return p2;
+    }
+
+    public PlayerInterface getCurrentPlayer() {
+        return playerTurn == PlayerColor.ORANGE ? p1 : p2;
+    }
+
     public enum PlayerColor {
-        EMPTY,
-        ORANGE,
-        PURPLE,
+        EMPTY {
+            public PlayerColor next() {
+                return EMPTY;
+            }
+
+            @Override
+            public String toString() {
+                return "EMPTY";
+            }
+        },
+        ORANGE {
+            public PlayerColor next() {
+                return PURPLE;
+            }
+
+            @Override
+            public String toString() {
+                return "ORANGE";
+            }
+        },
+        PURPLE {
+            public PlayerColor next() {
+                return ORANGE;
+            }
+
+            @Override
+            public String toString() {
+                return "PURPLE";
+            }
+        };
+
+        public abstract PlayerColor next();
     }
 
     public enum Angle {

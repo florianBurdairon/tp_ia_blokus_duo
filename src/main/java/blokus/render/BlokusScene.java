@@ -4,14 +4,18 @@ import blokus.logic.Grid;
 import blokus.logic.Piece;
 import blokus.logic.Position;
 import blokus.player.PlayerInterface;
-import blokus.player.ThreeDimensionalPlayer;
+import blokus.player.Player;
 import javafx.application.Application;
 import javafx.geometry.Point3D;
+import javafx.geometry.Pos;
 import javafx.scene.*;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.PhongMaterial;
 import javafx.scene.shape.Box;
+import javafx.scene.shape.CullFace;
+import javafx.scene.shape.MeshView;
+import javafx.scene.shape.TriangleMesh;
 import javafx.stage.Stage;
 
 import java.util.List;
@@ -22,7 +26,13 @@ public class BlokusScene extends Application {
     private Grid grid;
     private GridRenderer gridRenderer;
 
-    final Group root = new Group();
+    private boolean canPlay = false;
+    private boolean isHoverGrid = false;
+
+    private final Group root = new Group();
+    public static final Group tempGroup = new Group();
+    public final Group pieces1Group = new Group();
+    public final Group pieces2Group = new Group();
     final XForm lightGroup = new XForm();
     final XForm axisGroup = new XForm();
 
@@ -52,6 +62,27 @@ public class BlokusScene extends Application {
     double mouseDeltaX;
     double mouseDeltaY;
 
+    public void setGrid(Grid grid) {
+        this.grid = grid;
+        if (this.grid.getP1() instanceof Player p) {
+            p.askForPlay = new Consumer<List<Piece>>() {
+                @Override
+                public void accept(List<Piece> pieces) {
+                    canPlay = true;
+                }
+            };
+        }
+
+        if (this.grid.getP2() instanceof Player p) {
+            p.askForPlay = new Consumer<List<Piece>>() {
+                @Override
+                public void accept(List<Piece> pieces) {
+                    canPlay = true;
+                }
+            };
+        }
+    }
+
     public void startApplication(){
         launch();
     }
@@ -60,6 +91,8 @@ public class BlokusScene extends Application {
     public void start(Stage primaryStage) {
         BorderPane globalPane = new BorderPane();
         scene = new Scene(globalPane, 1000, 800);
+
+        setUpGame();
 
         globalPane.setCenter(setUp3DScene());
 
@@ -70,11 +103,22 @@ public class BlokusScene extends Application {
         primaryStage.setScene(scene);
         primaryStage.show();
 
-        grid.start();
+        new Thread(() -> {
+            grid.start();
+        }).start();
+    }
+
+    private void setUpGame()
+    {
+        PlayerInterface player1 = new Player();
+        PlayerInterface player2 = new Player();
+        Grid grid = new Grid(player1, player2);
+
+        setGrid(grid);
     }
 
     private SubScene setUp3DScene(){
-        root.getChildren().add(world);
+        root.getChildren().addAll(world, tempGroup, pieces1Group, pieces2Group);
         world.setDepthTest(DepthTest.ENABLE);
 
         // buildScene();
@@ -84,52 +128,41 @@ public class BlokusScene extends Application {
 
         world.getChildren().clear();
 
-        ThreeDimensionalPlayer p1 = new ThreeDimensionalPlayer();
-        p1.askForPlay = new Consumer<List<Piece>>() {
-            @Override
-            public void accept(List<Piece> pieces) {
-                Piece piece = pieces.getLast();
-                Position pos = new Position(7, 7);
-                System.out.println(p1.playPieceAt(piece, pos));
-                for (Position cell : piece.getCases()) {
-                    gridRenderer.updatePos(new Position(pos.x + cell.x, pos.y + cell.y));
-                }
-            }
-        };
-        PlayerInterface p2 = new ThreeDimensionalPlayer();
-
-        grid = new Grid(p1, p2);
         gridRenderer = new GridRenderer(grid);
         gridRenderer.renderInto(world);
+        gridRenderer.world.setOnMouseEntered(e -> {
+            isHoverGrid = true;
+        });
         gridRenderer.registerEvents(scene);
 
-        List<Piece> p1Pieces = grid.getP1Pieces();
-        Position pos = new Position(-grid.width * 9, - grid.width/2 * CellRenderer.cellSize);
-        for (Piece p : p1Pieces){
-            if (pos.y > grid.width * CellRenderer.cellSize) {
-                pos.x -= 2 * CellRenderer.cellSize;
-                pos.y = -grid.width/2 * CellRenderer.cellSize;
-            }
-            PieceRenderer pieceRenderer = new PieceRenderer(p, new Position(
-                    pos.x, pos.y), 0.5, Grid.PlayerColor.ORANGE);
-            pos.y += 3 * CellRenderer.cellSize;
-            pieceRenderer.renderInto(world);
-            pieceRenderer.registerEvents(scene);
-        }
+        updatePieces();
 
-        List<Piece> p2Pieces = grid.getP2Pieces();
-        pos = new Position(grid.width * 18, -grid.width/2 * CellRenderer.cellSize);
-        for (Piece p : p2Pieces){
-            if (pos.y > grid.width * CellRenderer.cellSize) {
-                pos.x += 2 * CellRenderer.cellSize;
-                pos.y = -grid.width/2 * CellRenderer.cellSize;
-            }
-            PieceRenderer pieceRenderer = new PieceRenderer(p, new Position(
-                    pos.x, pos.y), 0.5, Grid.PlayerColor.PURPLE);
-            pos.y += 3 * CellRenderer.cellSize;
-            pieceRenderer.renderInto(world);
-            pieceRenderer.registerEvents(scene);
-        }
+        final PhongMaterial tableMaterial = new PhongMaterial();
+        tableMaterial.setDiffuseColor(Color.DARKGREY);
+
+        TriangleMesh tableMesh = new TriangleMesh();
+        tableMesh.getPoints().addAll(
+                0, 0, 0,
+                1, 0, 0,
+                0, 0, 1,
+                1, 0, 1);
+        tableMesh.getTexCoords().addAll(
+                0.5f, 0.5f
+        );
+        tableMesh.getFaces().addAll(
+                0, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0 // Bottom
+        );
+        MeshView tableMeshView = new MeshView(tableMesh);
+        tableMeshView.setCullFace(CullFace.NONE);
+        tableMeshView.setScaleX(2000);
+        tableMeshView.setScaleZ(2000);
+        tableMeshView.setTranslateY(-4f);
+        tableMeshView.setMaterial(tableMaterial);
+        tableMeshView.setOnMouseEntered(e -> {
+            isHoverGrid = false;
+        });
+
+        world.getChildren().add(tableMeshView);
 
         SubScene subScene = new SubScene(root, 800, 800, true, SceneAntialiasing.BALANCED);
         subScene.setFill(Color.SKYBLUE);
@@ -139,7 +172,7 @@ public class BlokusScene extends Application {
     }
 
     private void buildCamera() {
-        System.out.println("building camera");
+        System.out.println("Building camera");
         root.getChildren().add(cameraXForm);
         cameraXForm.getChildren().add(cameraXForm2);
         cameraXForm2.getChildren().add(cameraXForm3);
@@ -155,7 +188,7 @@ public class BlokusScene extends Application {
     }
 
     private void buildLight() {
-        System.out.println("building lights");
+        System.out.println("Building lights");
 
         DirectionalLight directionalLight = new DirectionalLight();
         directionalLight.setDirection(new Point3D(0.5, -1, 0.5));
@@ -168,7 +201,7 @@ public class BlokusScene extends Application {
     }
 
     private void buildAxes() {
-        System.out.println("buildAxes()");
+        System.out.println("Building axes");
         final PhongMaterial redMaterial = new PhongMaterial();
         redMaterial.setDiffuseColor(Color.DARKRED);
         redMaterial.setSpecularColor(Color.RED);
@@ -194,12 +227,73 @@ public class BlokusScene extends Application {
         root.getChildren().addAll(axisGroup);
     }
 
+    private void updatePieces()
+    {
+        pieces1Group.getChildren().clear();
+        pieces2Group.getChildren().clear();
+
+        List<Piece> p1Pieces = grid.getP1Pieces();
+        Position pos = new Position(-Grid.width * 9, -Grid.width /2 * CellRenderer.cellSize);
+        for (Piece p : p1Pieces){
+            if (pos.y > Grid.width * CellRenderer.cellSize) {
+                pos.x -= 2 * CellRenderer.cellSize;
+                pos.y = -Grid.width/2 * CellRenderer.cellSize;
+            }
+            PieceRenderer pieceRenderer = new PieceRenderer(p, new Position(
+                    pos.x, pos.y), 0.5, Grid.PlayerColor.ORANGE);
+            pos.y += 3 * CellRenderer.cellSize;
+            pieceRenderer.renderInto(pieces1Group);
+            pieceRenderer.registerEvents(scene);
+            pieceRenderer.world.setOnMouseClicked(event -> {
+                if (grid.getCurrentPlayer() == grid.getP1())
+                    PlayerInput.getInstance().selectPiece(p, Grid.PlayerColor.ORANGE);
+            });
+        }
+
+        List<Piece> p2Pieces = grid.getP2Pieces();
+        pos = new Position(Grid.width * 18, -Grid.width/2 * CellRenderer.cellSize);
+        for (Piece p : p2Pieces){
+            if (pos.y > Grid.width * CellRenderer.cellSize) {
+                pos.x += 2 * CellRenderer.cellSize;
+                pos.y = -Grid.width/2 * CellRenderer.cellSize;
+            }
+            PieceRenderer pieceRenderer = new PieceRenderer(p, new Position(
+                    pos.x, pos.y), 0.5, Grid.PlayerColor.PURPLE);
+            pos.y += 3 * CellRenderer.cellSize;
+            pieceRenderer.renderInto(pieces2Group);
+            pieceRenderer.registerEvents(scene);
+            pieceRenderer.world.setOnMouseClicked(event -> {
+                if (grid.getCurrentPlayer() == grid.getP2())
+                    PlayerInput.getInstance().selectPiece(p, Grid.PlayerColor.PURPLE);
+            });
+        }
+    }
+
     private void handleMouse(Scene scene) {
+        scene.setOnMouseClicked(me -> {
+            if (canPlay && isHoverGrid && PlayerInput.getInstance().getSelectedPiece() != null) {
+                PieceRenderer pieceRenderer = PlayerInput.getInstance().getSelectedPiece();
+                Piece piecePlayed = pieceRenderer.getPiece();
+
+                if (grid.placePiece(piecePlayed, pieceRenderer.getPos(), Grid.Angle.DEG_0, false)) {
+                    System.out.println("Player played at " + pieceRenderer.getPos());
+                    updatePieces();
+                    canPlay = false;
+                } else {
+                    System.out.println("Player can not play at " + pieceRenderer.getPos() + ", reselect a piece");
+                }
+                PlayerInput.getInstance().unselectPiece();
+                for(Position pieceCase : piecePlayed.getCases()){
+                    gridRenderer.updatePos(pieceRenderer.getPos().add(pieceCase));
+                }
+            }
+        });
         scene.setOnMousePressed(me -> {
             mousePosX = me.getSceneX();
             mousePosY = me.getSceneY();
             mouseOldX = me.getSceneX();
             mouseOldY = me.getSceneY();
+
         });
         scene.setOnScroll(se -> camera.setTranslateZ(camera.getTranslateZ() + se.getDeltaY()*SCROLL_SPEED));
         scene.setOnMouseDragged(me -> {

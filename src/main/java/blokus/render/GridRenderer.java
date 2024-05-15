@@ -58,36 +58,17 @@ public class GridRenderer extends ObjectRenderer {
         }
 
         world.setScale(CellRenderer.cellSize);
-
-
-        final PhongMaterial tableMaterial = new PhongMaterial();
-        tableMaterial.setDiffuseColor(Color.DARKGREY);
-
-        TriangleMesh tableMesh = new TriangleMesh();
-        tableMesh.getPoints().addAll(
-                0, -0.15f, 0,
-                1, -0.15f, 0,
-                0, -0.15f, 1,
-                1, -0.15f, 1);
-        tableMesh.getTexCoords().addAll(
-                0.5f, 0.5f
-        );
-        tableMesh.getFaces().addAll(
-                0, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0 // Bottom
-        );
-        MeshView tableMeshView = new MeshView(tableMesh);
-        tableMeshView.setCullFace(CullFace.NONE);
-        tableMeshView.setScaleX(100);
-        tableMeshView.setScaleZ(100);
-        tableMeshView.setMaterial(tableMaterial);
-
-        world.getChildren().add(tableMeshView);
     }
 
     public void updatePos(Position pos) {
+        if (pos.x < 0 || pos.x >= Grid.width || pos.y < 0 || pos.y >= Grid.height)
+            return;
         if (grid.getCase(pos.x, pos.y) == Grid.PlayerColor.EMPTY) {
             GridCellRenderer gridCellRenderer = new GridCellRenderer(pos.x - Grid.width / 2, pos.y - Grid.height / 2);
             gridCellRenderer.renderInto(world);
+            gridCellRenderer.world.setOnMouseEntered(event -> {
+                PlayerInput.getInstance().setMousePos(pos);
+            });
         } else if (grid.getCase(pos.x, pos.y) == Grid.PlayerColor.ORANGE) {
             PieceCellRenderer pieceCellRenderer = new PieceCellRenderer(
                     new Position(pos.x - Grid.width / 2, pos.y - Grid.height / 2),

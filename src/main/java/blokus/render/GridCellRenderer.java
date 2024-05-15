@@ -1,5 +1,6 @@
 package blokus.render;
 
+import blokus.logic.Grid;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.PhongMaterial;
 import javafx.scene.shape.MeshView;
@@ -16,13 +17,15 @@ public class GridCellRenderer extends CellRenderer {
 
     void buildObject()
     {
+        boolean isStartingPoint = x == y && (x == -3 || x == 2);
+
         final PhongMaterial material = new PhongMaterial();
         material.setDiffuseColor(Color.WHITE);
         material.setSpecularColor(Color.WHITE);
 
         final PhongMaterial materialBottom = new PhongMaterial();
-        materialBottom.setDiffuseColor(Color.LIGHTGREY);
-        materialBottom.setSpecularColor(Color.LIGHTGREY);
+        materialBottom.setDiffuseColor(isStartingPoint ? Color.GREY : Color.LIGHTGREY);
+        materialBottom.setSpecularColor(isStartingPoint ? Color.GREY : Color.LIGHTGREY);
 
         TriangleMesh mesh = new TriangleMesh();
         mesh.getPoints().addAll(
