@@ -57,11 +57,12 @@ public class PlayerInput {
     }
 
     public void addRotation(Grid.Angle angle){
-        for (int i = 0; i < angle.ordinal(); i++) {
-            rotation = rotation.rotate90();
+        if (selectedPiece != null) {
+            for (int i = 0; i < angle.ordinal(); i++) {
+                rotation = rotation.rotate90();
+            }
+            selectedPiece.applyRotation(rotation);
         }
-        System.out.println("Rotation from PI: " + rotation);
-        selectedPiece.applyRotation(rotation);
     }
 
     public Grid.Angle getRotation(){
@@ -69,9 +70,10 @@ public class PlayerInput {
     }
 
     public void toggleSymmetry(){
-        System.out.println("Applied from PlayerInput");
-        symmetry = !symmetry;
-        selectedPiece.applySymmetry();
+        if (selectedPiece != null) {
+            symmetry = !symmetry;
+            selectedPiece.applySymmetry();
+        }
     }
 
     public boolean hasSymmetry(){

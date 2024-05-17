@@ -75,12 +75,18 @@ public class GridRenderer extends ObjectRenderer {
                     Color.rgb(255, 148, 0),
                     Color.rgb(255, 180, 76));
             pieceCellRenderer.renderInto(world);
+            pieceCellRenderer.world.setOnMouseEntered(event -> {
+                PlayerInput.getInstance().setMousePos(pos);
+            });
         } else {
             PieceCellRenderer pieceCellRenderer = new PieceCellRenderer(
                     new Position(pos.x - Grid.width / 2, pos.y - Grid.height / 2),
                     Color.rgb(167, 0, 171),
                     Color.rgb(184, 70, 187));
             pieceCellRenderer.renderInto(world);
+            pieceCellRenderer.world.setOnMouseEntered(event -> {
+                PlayerInput.getInstance().setMousePos(pos);
+            });
         }
     }
 }

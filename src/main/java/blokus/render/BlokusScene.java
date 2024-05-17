@@ -3,6 +3,7 @@ package blokus.render;
 import blokus.logic.Grid;
 import blokus.logic.Piece;
 import blokus.logic.Position;
+import blokus.player.MinMaxPlayer;
 import blokus.player.PlayerInterface;
 import blokus.player.Player;
 import blokus.utils.Utils;
@@ -113,7 +114,7 @@ public class BlokusScene extends Application {
     private void setUpGame()
     {
         PlayerInterface player1 = new Player();
-        PlayerInterface player2 = new Player();
+        PlayerInterface player2 = new MinMaxPlayer();
         Grid grid = new Grid(player1, player2);
 
         setGrid(grid);
@@ -350,6 +351,13 @@ public class BlokusScene extends Application {
                     break;
                 case X:
                     axisGroup.setVisible(!axisGroup.isVisible());
+                    break;
+                case U:
+                    for (int x = 0; x < Grid.width; x++) {
+                        for (int y = 0; y < Grid.height; y++) {
+                            gridRenderer.updatePos(new Position(x, y));
+                        }
+                    }
                     break;
             }
         });

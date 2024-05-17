@@ -52,14 +52,19 @@ public class PieceRenderer extends ObjectRenderer {
     private void renderCells()
     {
         world.getChildren().clear();
-        List<Position> cases = symmetry ? Utils.symmetry(piece.getCases()) : piece.getCases();
-        cases = Utils.rotate(cases, angle);
+        List<Position> cases = Utils.transform(piece.getCases(), angle, symmetry);
         for(Position casePos : cases) {
             Position correctPos = new Position(casePos.x - Grid.width/2, casePos.y - Grid.height/2);
             PieceCellRenderer pieceCellRenderer = new PieceCellRenderer(
                     correctPos,
                     getDarkColor(),
                     getLightColor());
+            //TODO: Allow movement of 1 on +
+            //if (!casePos.equals(new Position(0, 0))) {
+            //    pieceCellRenderer.world.setOnMouseEntered(event -> {
+            //        PlayerInput.getInstance().setMousePos(pos);
+            //    });
+            //}
             pieceCellRenderer.setScaleX(scale);
             pieceCellRenderer.setScaleY(scale);
             pieceCellRenderer.setScaleZ(scale);
@@ -87,13 +92,11 @@ public class PieceRenderer extends ObjectRenderer {
     }
 
     public void applyRotation(Grid.Angle newAngle) {
-        System.out.println("Rotation from renderer: " + newAngle);
         angle = newAngle;
         renderCells();
     }
 
     public void applySymmetry() {
-        System.out.println("Applied from renderer");
         symmetry = !symmetry;
         renderCells();
     }
