@@ -50,8 +50,6 @@ public class BlokusScene extends Application {
     private static final double CAMERA_INITIAL_Y_ANGLE = 135.0;
     private static final double CAMERA_NEAR_CLIP = 0.1;
     private static final double CAMERA_FAR_CLIP = 10000.0;
-    private static final double CONTROL_MULTIPLIER = 0.75;
-    private static final double SHIFT_MULTIPLIER = 5.0;
     private static final double MOUSE_SPEED = 0.2;
     private static final double ROTATION_SPEED = 1.5;
     private static final double TRACK_SPEED = 3;
@@ -248,7 +246,7 @@ public class BlokusScene extends Application {
             pieceRenderer.renderInto(pieces1Group);
             pieceRenderer.registerEvents(scene);
             pieceRenderer.world.setOnMouseClicked(event -> {
-                if (grid.getCurrentPlayer() == grid.getP1())
+                if (grid.getCurrentPlayer() == grid.getP1() && canPlay)
                     PlayerInput.getInstance().selectPiece(p, Grid.PlayerColor.ORANGE);
             });
         }
@@ -266,7 +264,7 @@ public class BlokusScene extends Application {
             pieceRenderer.renderInto(pieces2Group);
             pieceRenderer.registerEvents(scene);
             pieceRenderer.world.setOnMouseClicked(event -> {
-                if (grid.getCurrentPlayer() == grid.getP2())
+                if (grid.getCurrentPlayer() == grid.getP2() && canPlay)
                     PlayerInput.getInstance().selectPiece(p, Grid.PlayerColor.PURPLE);
             });
         }
@@ -353,11 +351,7 @@ public class BlokusScene extends Application {
                     axisGroup.setVisible(!axisGroup.isVisible());
                     break;
                 case U:
-                    for (int x = 0; x < Grid.width; x++) {
-                        for (int y = 0; y < Grid.height; y++) {
-                            gridRenderer.updatePos(new Position(x, y));
-                        }
-                    }
+                    gridRenderer.updateAll();
                     break;
             }
         });

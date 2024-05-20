@@ -50,4 +50,11 @@ public class Piece implements Serializable {
             .create();
         return gson.fromJson(resultStringBuilder.toString(), new TypeToken<ArrayList<Piece>>() {}.getType());
     }
+
+    @Override
+    public String toString() {
+        return "Piece{" +
+                "cases=" + cases +
+                '}';
+    }
 }

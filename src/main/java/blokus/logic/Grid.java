@@ -144,7 +144,6 @@ public class Grid {
 
         }
         return haveOneCorner;
-
     }
 
     public boolean canCurrentPlayerPlay() {
@@ -162,6 +161,7 @@ public class Grid {
                                 && (canFit(piece, new Position(x, y), playerTurn, angle, true)
                                 || canFit(piece, new Position(x, y), playerTurn, angle, false))
                         ) {
+                            System.out.println("Player " + player + " can play piece " + piece + " at (" + x + ", " + y + ")");
                             return true;
                         }
                     }
@@ -234,40 +234,46 @@ public class Grid {
         for (Piece piece : pieces) {
             for (int x = 0; x < width; x++) {
                 for (int y = 0; y < height; y++) {
-                    for (Angle angle : Angle.values()) {
-                        if (
-                                grid[x][y] == PlayerColor.EMPTY
-                                && (canFitInGrid(grid, piece, new Position(x, y), color, angle, true))
-                        ) {;
-                            Turn possibleTurn = new Turn(new Position(x, y), piece, angle, true);
-                            PlayerColor[][] newGrid = placePieceInGrid(grid, Utils.transform(piece.getCases(), angle, true), new Position(x, y), color);
-                            turns.put(possibleTurn, getPlayerCasesPlayed(newGrid, color));
-                        }
-                        if (
-                                grid[x][y] == PlayerColor.EMPTY
-                                && (canFitInGrid(grid, piece, new Position(x, y), color, angle, false))
-                        ) {;
-                            Turn possibleTurn = new Turn(new Position(x, y), piece, angle, false);
-                            PlayerColor[][] newGrid = placePieceInGrid(grid, Utils.transform(piece.getCases(), angle, false), new Position(x, y), color);
-                            turns.put(possibleTurn, getPlayerCasesPlayed(newGrid, color));
+                    if (grid[x][y] != PlayerColor.EMPTY) {
+                        break;
+                    }
+                    boolean hasColorAround = false;
+                    for (int xp = -3; xp < 3; xp++) {
+                        for (int yp = -3; yp < 3; yp++) {
+                            if (x + xp >= 0 && x + xp < width && y + yp >= 0 && y + yp < height && grid[x + xp][y + yp] == color) {
+                                hasColorAround = true;
+                                break;
+                            }
                         }
                     }
+                    boolean noNeedForColorAround = color == PlayerColor.ORANGE ?
+                            grid[player1Start.x][player1Start.y] == PlayerColor.EMPTY
+                            : grid[player2Start.x][player2Start.y] == PlayerColor.EMPTY;
+                    if (hasColorAround || noNeedForColorAround) {
+                        for (Angle angle : Angle.values()) {
+                            if (canFitInGrid(grid, piece, new Position(x, y), color, angle, true)) {
+                                Turn possibleTurn = new Turn(new Position(x, y), piece, angle, true);
+                                turns.put(possibleTurn, getPlayerScore(pieces) + piece.getCaseNumber());
+                            }
+                            if (canFitInGrid(grid, piece, new Position(x, y), color, angle, false)) {
+                                Turn possibleTurn = new Turn(new Position(x, y), piece, angle, false);
+                                turns.put(possibleTurn, getPlayerScore(pieces) + piece.getCaseNumber());
+                            }
+                        }
+                    }
+
                 }
             }
         }
         return turns;
     }
 
-    public static int getPlayerCasesPlayed(PlayerColor[][] grid, PlayerColor color) {
-        int casesPlayed = 0;
-        for (int x = 0; x < width; x++) {
-            for (int y = 0; y < height; y++) {
-                if (grid[x][y] == color) {
-                    casesPlayed++;
-                }
-            }
+    public static int getPlayerScore(List<Piece> pieces) {
+        int score = 0;
+        for (Piece piece : pieces) {
+            score -= piece.getCaseNumber();
         }
-        return casesPlayed;
+        return score;
     }
 
     public PlayerColor[][] getGrid() {

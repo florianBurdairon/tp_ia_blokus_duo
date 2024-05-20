@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 public class MinMaxPlayer implements PlayerInterface {
-    private static final int MINIMAX_DEPTH = 1;
+    private static final int MINIMAX_DEPTH = 2;
 
     private Grid grid;
 
@@ -22,7 +22,7 @@ public class MinMaxPlayer implements PlayerInterface {
         int minmaxScore = minmax(0, true, grid.getGrid(),
                 grid.getPlayerPieces(Grid.PlayerColor.PURPLE),
                 grid.getPlayerPieces(Grid.PlayerColor.ORANGE));
-        System.out.println("Reachable score: " + minmaxScore);
+        System.out.println("Reachable score: " + minmaxScore + " with piece: " + nextTurn.getPiece());
         grid.placePiece(nextTurn.getPiece(), nextTurn.getPos(), nextTurn.getAngleNextTurn(), nextTurn.isSymmetry());
     }
 
@@ -32,6 +32,7 @@ public class MinMaxPlayer implements PlayerInterface {
         int score = maximizing ? (int)Double.NEGATIVE_INFINITY : (int)Double.POSITIVE_INFINITY;
 
         Map<Turn, Integer> possiblesTurns = Grid.getPossibleTurns(cases, player, pieces);
+        System.out.println("Nb possibles turns: " + possiblesTurns.size() + " for player " + player);
         for(Turn turn : possiblesTurns.keySet()) {
             int newScore;
             if(currentDepth < MINIMAX_DEPTH) {
@@ -39,7 +40,11 @@ public class MinMaxPlayer implements PlayerInterface {
                 newPieces.remove(turn.getPiece());
                 newScore = minmax(currentDepth + 1, !maximizing, Grid.placePieceInGrid(cases, turn.getPiece().getCases(), turn.getPos(), player.next()), otherPieces, newPieces);
             } else {
-                newScore = possiblesTurns.get(turn);
+                int otherScore = 0;
+                for(Piece piece : otherPieces) {
+                    otherScore -= piece.getCaseNumber();
+                }
+                newScore = possiblesTurns.get(turn) - otherScore;
             }
             if (maximizing) {
                 score = Math.max(score, newScore);

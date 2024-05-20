@@ -2,6 +2,7 @@ package blokus.render;
 
 import blokus.logic.Grid;
 import blokus.logic.Position;
+import javafx.scene.Group;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.PhongMaterial;
 import javafx.scene.shape.CullFace;
@@ -10,6 +11,8 @@ import javafx.scene.shape.TriangleMesh;
 
 public class GridRenderer extends ObjectRenderer {
     private final Grid grid;
+
+    private Group cellGroup = new Group();
 
     public GridRenderer(Grid grid) {
         this.grid = grid;
@@ -45,17 +48,14 @@ public class GridRenderer extends ObjectRenderer {
         MeshView meshView = new MeshView(mesh);
         meshView.setTranslateX(-0.5f);
         meshView.setTranslateZ(-0.5f);
-        meshView.setScaleX(grid.width);
-        meshView.setScaleZ(grid.height);
+        meshView.setScaleX(Grid.width);
+        meshView.setScaleZ(Grid.height);
         meshView.setMaterial(material);
 
         world.getChildren().add(meshView);
+        world.getChildren().add(cellGroup);
 
-        for (int x = 0; x < grid.width; x++) {
-            for (int y = 0; y < grid.height; y++) {
-                updatePos(new Position(x, y));
-            }
-        }
+        updateAll();
 
         world.setScale(CellRenderer.cellSize);
     }
@@ -65,7 +65,7 @@ public class GridRenderer extends ObjectRenderer {
             return;
         if (grid.getCase(pos.x, pos.y) == Grid.PlayerColor.EMPTY) {
             GridCellRenderer gridCellRenderer = new GridCellRenderer(pos.x - Grid.width / 2, pos.y - Grid.height / 2);
-            gridCellRenderer.renderInto(world);
+            gridCellRenderer.renderInto(cellGroup);
             gridCellRenderer.world.setOnMouseEntered(event -> {
                 PlayerInput.getInstance().setMousePos(pos);
             });
@@ -74,7 +74,7 @@ public class GridRenderer extends ObjectRenderer {
                     new Position(pos.x - Grid.width / 2, pos.y - Grid.height / 2),
                     Color.rgb(255, 148, 0),
                     Color.rgb(255, 180, 76));
-            pieceCellRenderer.renderInto(world);
+            pieceCellRenderer.renderInto(cellGroup);
             pieceCellRenderer.world.setOnMouseEntered(event -> {
                 PlayerInput.getInstance().setMousePos(pos);
             });
@@ -83,10 +83,19 @@ public class GridRenderer extends ObjectRenderer {
                     new Position(pos.x - Grid.width / 2, pos.y - Grid.height / 2),
                     Color.rgb(167, 0, 171),
                     Color.rgb(184, 70, 187));
-            pieceCellRenderer.renderInto(world);
+            pieceCellRenderer.renderInto(cellGroup);
             pieceCellRenderer.world.setOnMouseEntered(event -> {
                 PlayerInput.getInstance().setMousePos(pos);
             });
+        }
+    }
+
+    public void updateAll() {
+        this.cellGroup.getChildren().clear();
+        for (int x = 0; x < Grid.width; x++) {
+            for (int y = 0; y < Grid.height; y++) {
+                updatePos(new Position(x, y));
+            }
         }
     }
 }
