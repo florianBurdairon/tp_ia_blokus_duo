@@ -1,20 +1,41 @@
 package blokus.logic;
 
+import blokus.utils.Utils;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 
 import java.io.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class Piece implements Serializable {
     private final int caseNumber;
     private final ArrayList<Position> cases;
+    private final Map<List<Position>, Transform> transformations = new HashMap<>();
 
     public Piece(int caseNumber, List<Position> cases) {
         this.caseNumber = caseNumber;
         this.cases = new ArrayList<>(cases);
+
+        for(Grid.Angle angle : Grid.Angle.values()) {
+            for (int i = 0; i < 2; i++) {
+                List<Position> transformation = Utils.transform(cases, angle, i==1);
+                boolean contains = false;
+                for (List<Position> transf : transformations.keySet())
+                {
+                    if (Utils.areSimilar(transf, transformation)) {
+                        contains = true;
+                        break;
+                    }
+                }
+                if (!contains) {
+                    transformations.put(transformation, new Transform(angle, i==1));
+                }
+            }
+        }
     }
 
     public int getCaseNumber() {
@@ -27,6 +48,10 @@ public class Piece implements Serializable {
             clonedCases.add(c.clone());
         }
         return clonedCases;
+    }
+
+    public Map<List<Position>, Transform> getTransformations() {
+        return transformations;
     }
 
     //Deserialization of piece-set.json file to get all the pieces

@@ -1,15 +1,14 @@
 package blokus.render;
 
-import blokus.logic.Grid;
-import blokus.logic.Piece;
-import blokus.logic.Position;
+import blokus.logic.*;
 import blokus.player.MinMaxPlayer;
 import blokus.player.PlayerInterface;
 import blokus.player.Player;
 import blokus.utils.Utils;
 import javafx.application.Application;
+import javafx.beans.property.BooleanProperty;
+import javafx.beans.property.SimpleBooleanProperty;
 import javafx.geometry.Point3D;
-import javafx.geometry.Pos;
 import javafx.scene.*;
 import javafx.scene.input.MouseButton;
 import javafx.scene.layout.BorderPane;
@@ -22,15 +21,15 @@ import javafx.scene.shape.TriangleMesh;
 import javafx.stage.Stage;
 
 import java.util.List;
-import java.util.function.Consumer;
 
-public class BlokusScene extends Application {
+public class BlokusScene extends Application implements Observer {
     private Scene scene;
     private Grid grid;
     private GridRenderer gridRenderer;
 
     private boolean canPlay = false;
     private boolean isHoverGrid = false;
+    BooleanProperty shouldUpdate = new SimpleBooleanProperty(false);
 
     private final Group root = new Group();
     public static final Group tempGroup = new Group();
@@ -66,21 +65,11 @@ public class BlokusScene extends Application {
     public void setGrid(Grid grid) {
         this.grid = grid;
         if (this.grid.getP1() instanceof Player p) {
-            p.askForPlay = new Consumer<List<Piece>>() {
-                @Override
-                public void accept(List<Piece> pieces) {
-                    canPlay = true;
-                }
-            };
+            p.askForPlay = pieces -> canPlay = true;
         }
 
         if (this.grid.getP2() instanceof Player p) {
-            p.askForPlay = new Consumer<List<Piece>>() {
-                @Override
-                public void accept(List<Piece> pieces) {
-                    canPlay = true;
-                }
-            };
+            p.askForPlay = pieces -> canPlay = true;
         }
     }
 
@@ -104,9 +93,7 @@ public class BlokusScene extends Application {
         primaryStage.setScene(scene);
         primaryStage.show();
 
-        new Thread(() -> {
-            grid.start();
-        }).start();
+        new Thread(() -> grid.start()).start();
     }
 
     private void setUpGame()
@@ -114,6 +101,16 @@ public class BlokusScene extends Application {
         PlayerInterface player1 = new Player();
         PlayerInterface player2 = new MinMaxPlayer();
         Grid grid = new Grid(player1, player2);
+
+        grid.addListener(this);
+        shouldUpdate.addListener((observable, oldValue, newValue) -> {
+            if (newValue) {
+                System.out.println("Updated from boolean property");
+                //gridRenderer.updateAll();
+                shouldUpdate.set(false);
+            }
+        });
+
 
         setGrid(grid);
     }
@@ -131,9 +128,7 @@ public class BlokusScene extends Application {
 
         gridRenderer = new GridRenderer(grid);
         gridRenderer.renderInto(world);
-        gridRenderer.world.setOnMouseEntered(e -> {
-            isHoverGrid = true;
-        });
+        gridRenderer.world.setOnMouseEntered(e -> isHoverGrid = true);
         gridRenderer.registerEvents(scene);
 
         updatePieces();
@@ -159,9 +154,7 @@ public class BlokusScene extends Application {
         tableMeshView.setScaleZ(2000);
         tableMeshView.setTranslateY(-4f);
         tableMeshView.setMaterial(tableMaterial);
-        tableMeshView.setOnMouseEntered(e -> {
-            isHoverGrid = false;
-        });
+        tableMeshView.setOnMouseEntered(e -> isHoverGrid = false);
 
         world.getChildren().add(tableMeshView);
 
@@ -278,7 +271,8 @@ public class BlokusScene extends Application {
                         PieceRenderer pieceRenderer = PlayerInput.getInstance().getSelectedPiece();
                         Piece piecePlayed = pieceRenderer.getPiece();
 
-                        if (grid.placePiece(piecePlayed, pieceRenderer.getPos(), PlayerInput.getInstance().getRotation(), PlayerInput.getInstance().hasSymmetry())) {
+                        Transform transform = new Transform(PlayerInput.getInstance().getRotation(), PlayerInput.getInstance().hasSymmetry());
+                        if (grid.placePiece(piecePlayed, pieceRenderer.getPos(), transform)) {
                             System.out.println("Player played at " + pieceRenderer.getPos());
                             updatePieces();
                             canPlay = false;
@@ -355,5 +349,13 @@ public class BlokusScene extends Application {
                     break;
             }
         });
+    }
+
+
+    @Override
+    public void update() {
+        System.out.println("Updated");
+        shouldUpdate.set(true);
+        //gridRenderer.updateAll();
     }
 }

@@ -2,7 +2,6 @@ package blokus.player;
 
 import blokus.logic.Grid;
 import blokus.logic.Piece;
-import blokus.logic.Position;
 import blokus.logic.Turn;
 
 import java.util.ArrayList;
@@ -23,7 +22,7 @@ public class MinMaxPlayer implements PlayerInterface {
                 grid.getPlayerPieces(Grid.PlayerColor.PURPLE),
                 grid.getPlayerPieces(Grid.PlayerColor.ORANGE));
         System.out.println("Reachable score: " + minmaxScore + " with piece: " + nextTurn.getPiece());
-        grid.placePiece(nextTurn.getPiece(), nextTurn.getPos(), nextTurn.getAngleNextTurn(), nextTurn.isSymmetry());
+        grid.placePiece(nextTurn.getPiece(), nextTurn.getPos(), nextTurn.getTransform());
     }
 
     private int minmax(int currentDepth, boolean maximizing, Grid.PlayerColor[][] cases, List<Piece> pieces, List<Piece> otherPieces)
@@ -32,7 +31,8 @@ public class MinMaxPlayer implements PlayerInterface {
         int score = maximizing ? (int)Double.NEGATIVE_INFINITY : (int)Double.POSITIVE_INFINITY;
 
         Map<Turn, Integer> possiblesTurns = Grid.getPossibleTurns(cases, player, pieces);
-        System.out.println("Nb possibles turns: " + possiblesTurns.size() + " for player " + player);
+        if (currentDepth <= 1)
+            System.out.println("Nb possibles turns: " + possiblesTurns.size() + " for player " + player + " with pieces: " + pieces.size());
         for(Turn turn : possiblesTurns.keySet()) {
             int newScore;
             if(currentDepth < MINIMAX_DEPTH) {
@@ -40,10 +40,7 @@ public class MinMaxPlayer implements PlayerInterface {
                 newPieces.remove(turn.getPiece());
                 newScore = minmax(currentDepth + 1, !maximizing, Grid.placePieceInGrid(cases, turn.getPiece().getCases(), turn.getPos(), player.next()), otherPieces, newPieces);
             } else {
-                int otherScore = 0;
-                for(Piece piece : otherPieces) {
-                    otherScore -= piece.getCaseNumber();
-                }
+                int otherScore = Grid.getPlayerScore(otherPieces);
                 newScore = possiblesTurns.get(turn) - otherScore;
             }
             if (maximizing) {
@@ -51,13 +48,15 @@ public class MinMaxPlayer implements PlayerInterface {
             } else {
                 score = Math.min(score, newScore);
             }
-            possiblesTurns.put(turn, score);
+            if (currentDepth == 0)
+                possiblesTurns.put(turn, newScore);
         }
         if (currentDepth == 0) {
             for(Turn turn : possiblesTurns.keySet())
             {
                 if (possiblesTurns.get(turn) == score) {
                     nextTurn = turn;
+                    return score;
                 }
             }
         }

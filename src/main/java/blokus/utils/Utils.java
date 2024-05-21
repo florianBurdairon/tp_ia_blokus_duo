@@ -2,6 +2,7 @@ package blokus.utils;
 
 import blokus.logic.Grid;
 import blokus.logic.Position;
+import blokus.logic.Transform;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -11,11 +12,14 @@ public class Utils {
     public static Grid.PlayerColor[][] cloneGrid(Grid.PlayerColor[][] originalGrid) {
         Grid.PlayerColor[][] newGrid = new Grid.PlayerColor[Grid.width][Grid.height];
         for (int x = 0; x < newGrid.length; x++) {
-            for (int y = 0; y < newGrid[x].length; y++) {
-                newGrid[x][y] = originalGrid[x][y];
-            }
+            System.arraycopy(originalGrid[x], 0, newGrid[x], 0, newGrid[x].length);
         }
         return newGrid;
+    }
+
+    public static List<Position> transform(List<Position> cases, Transform transform)
+    {
+        return transform(cases, transform.angle, transform.symmetry);
     }
 
     public static List<Position> transform(List<Position> cases, Grid.Angle angle, boolean doSymmetry)
@@ -64,4 +68,12 @@ public class Utils {
         return cases;
     }
 
+    public static boolean areSimilar(List<Position> original, List<Position> possibleDuplicate) {
+        for (Position newCase : possibleDuplicate) {
+            if (!original.contains(newCase)) {
+                return false;
+            }
+        }
+        return true;
+    }
 }

@@ -8,13 +8,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class Grid {
+public class Grid implements Observable {
     public static final int width = 14;
     public static final int height = 14;
     public static final int startScore = -89;
 
     private final int bonusAllPiecesPlaced = 15;
     private final int bonusSmallPiece = 5;
+
+    private final List<Observer> observers = new ArrayList<>();
 
     private static final Position player1Start = new Position(4, 4);
     private static final Position player2Start = new Position(width - 4 - 1, height - 4 - 1);
@@ -53,7 +55,6 @@ public class Grid {
 
     public void start(){
         while (!isGameFinished()) {
-            System.out.println("Player " + playerTurn + " turn");
             playTurn();
             playerTurn = playerTurn.next();
         }
@@ -61,9 +62,9 @@ public class Grid {
         System.out.println("Winner is " + getWinner());
     }
 
-    public boolean placePiece(Piece piece, Position position, Angle angle, boolean doSymmetry) {
-        if (canFit(piece, position, playerTurn, angle, doSymmetry)) {
-            grid = placePieceInGrid(grid, Utils.transform(piece.getCases(), angle, doSymmetry), position, playerTurn);
+    public boolean placePiece(Piece piece, Position position, Transform transform) {
+        if (canFit(Utils.transform(piece.getCases(), transform), position, playerTurn)) {
+            grid = placePieceInGrid(grid, Utils.transform(piece.getCases(), transform), position, playerTurn);
             if (playerTurn == PlayerColor.ORANGE) {
                 if (isPlayer1FirstTurn)
                     isPlayer1FirstTurn = false;
@@ -75,8 +76,8 @@ public class Grid {
                 player2LastPiece = piece;
                 p2Pieces.remove(piece);
             }
-            System.out.println(playerTurn + " played piece at (" + position.x + ", " + position.y + ")");
             hasPlayed = true;
+            updateObservers();
             return true;
         }
         return false;
@@ -93,14 +94,14 @@ public class Grid {
         return newGrid;
     }
 
-    public boolean canFit(Piece piece, Position position, PlayerColor color, Angle angle, boolean doSymmetry) {
-        return canFitInGrid(grid, piece, position, color, angle, doSymmetry);
+    public boolean canFit(List<Position> cases, Position position, PlayerColor color) {
+        return canFitInGrid(grid, cases, position, color);
     }
 
-    public static boolean canFitInGrid(PlayerColor[][] grid, Piece piece, Position position, PlayerColor color, Angle angle, boolean doSymmetry) {
+    public static boolean canFitInGrid(PlayerColor[][] grid, List<Position> cases, Position position, PlayerColor color) {
         boolean haveOneCorner = false;
         try {
-            for (Position casePos : Utils.transform(piece.getCases(), angle, doSymmetry)) {
+            for (Position casePos : cases) {
                 int x = position.x + casePos.x;
                 int y = position.y + casePos.y;
 
@@ -123,6 +124,10 @@ public class Grid {
                 }
 
                 for(int i = -1; i < 2; i += 2) {
+                    // Check if piece has a border with a piece of the same color
+                    if ((x + i >= 0 && x + i < width && grid[x + i][y] == color) || (y + i >= 0 && y + i < height && grid[x][y + i] == color)) {
+                        return false;
+                    }
                     for (int j = -1; j < 2; j +=2) {
                         int xDiag = x + i;
                         int yDiag = y + j;
@@ -134,14 +139,10 @@ public class Grid {
                             }
                         }
                     }
-                    // Check if piece has a border with a piece of the same color
-                    if (x + i >= 0 && x + i < width && y + i >= 0 && y + i < height && (grid[x + i][y] == color || grid[x][y + i] == color)) {
-                        return false;
-                    }
                 }
             }
         } catch (ArrayIndexOutOfBoundsException ignored) {
-
+            /* Ignored */
         }
         return haveOneCorner;
     }
@@ -155,13 +156,13 @@ public class Grid {
         for (Piece piece : pieces) {
             for (int x = 0; x < width; x++) {
                 for (int y = 0; y < height; y++) {
-                    for (Angle angle : Angle.values()) {
-                        if (
-                                grid[x][y] == PlayerColor.EMPTY
-                                && (canFit(piece, new Position(x, y), playerTurn, angle, true)
-                                || canFit(piece, new Position(x, y), playerTurn, angle, false))
-                        ) {
-                            System.out.println("Player " + player + " can play piece " + piece + " at (" + x + ", " + y + ")");
+                    for (List<Position> transformation : piece.getTransformations().keySet()) {
+                        if (grid[x][y] != PlayerColor.EMPTY) {
+                            break;
+                        }
+                        if (canFit(transformation, new Position(x, y), player)) {
+                            if (player == PlayerColor.PURPLE)
+                                System.out.println("Player " + player + " can play piece " + piece + " at (" + x + ", " + y + ")");
                             return true;
                         }
                     }
@@ -231,37 +232,32 @@ public class Grid {
 
     public static Map<Turn, Integer> getPossibleTurns(PlayerColor[][] grid, PlayerColor color, List<Piece> pieces) {
         Map<Turn, Integer> turns = new HashMap<>();
-        for (Piece piece : pieces) {
-            for (int x = 0; x < width; x++) {
-                for (int y = 0; y < height; y++) {
-                    if (grid[x][y] != PlayerColor.EMPTY) {
-                        break;
-                    }
-                    boolean hasColorAround = false;
-                    for (int xp = -3; xp < 3; xp++) {
-                        for (int yp = -3; yp < 3; yp++) {
-                            if (x + xp >= 0 && x + xp < width && y + yp >= 0 && y + yp < height && grid[x + xp][y + yp] == color) {
-                                hasColorAround = true;
-                                break;
-                            }
+        boolean noNeedForColorAround = color == PlayerColor.ORANGE ?
+                grid[player1Start.x][player1Start.y] == PlayerColor.EMPTY
+                : grid[player2Start.x][player2Start.y] == PlayerColor.EMPTY;
+        for (int x = 0; x < width; x++) {
+            for (int y = 0; y < height; y++) {
+                if (grid[x][y] != PlayerColor.EMPTY) {
+                    break;
+                }
+                boolean hasColorAround = noNeedForColorAround;
+                for (int xp = -3; xp < 3 && !hasColorAround; xp++) {
+                    for (int yp = -3; yp < 3; yp++) {
+                        if (x + xp >= 0 && x + xp < width && y + yp >= 0 && y + yp < height && grid[x + xp][y + yp] == color) {
+                            hasColorAround = true;
+                            break;
                         }
                     }
-                    boolean noNeedForColorAround = color == PlayerColor.ORANGE ?
-                            grid[player1Start.x][player1Start.y] == PlayerColor.EMPTY
-                            : grid[player2Start.x][player2Start.y] == PlayerColor.EMPTY;
-                    if (hasColorAround || noNeedForColorAround) {
-                        for (Angle angle : Angle.values()) {
-                            if (canFitInGrid(grid, piece, new Position(x, y), color, angle, true)) {
-                                Turn possibleTurn = new Turn(new Position(x, y), piece, angle, true);
-                                turns.put(possibleTurn, getPlayerScore(pieces) + piece.getCaseNumber());
-                            }
-                            if (canFitInGrid(grid, piece, new Position(x, y), color, angle, false)) {
-                                Turn possibleTurn = new Turn(new Position(x, y), piece, angle, false);
+                }
+                if (hasColorAround) {
+                    for (Piece piece : pieces) {
+                        for (Map.Entry<List<Position>, Transform> transformation : piece.getTransformations().entrySet()) {
+                            if (canFitInGrid(grid, transformation.getKey(), new Position(x, y), color)) {
+                                Turn possibleTurn = new Turn(new Position(x, y), piece, transformation.getValue());
                                 turns.put(possibleTurn, getPlayerScore(pieces) + piece.getCaseNumber());
                             }
                         }
                     }
-
                 }
             }
         }
@@ -282,10 +278,6 @@ public class Grid {
 
     public PlayerColor getCase(int x, int y) {
         return grid[x][y];
-    }
-
-    public void setCase(int x, int y, PlayerColor c) {
-        grid[x][y] = c;
     }
 
     public List<Piece> getP1Pieces() {
@@ -318,6 +310,24 @@ public class Grid {
 
     public PlayerColor getCurrentPlayerColor() {
         return playerTurn;
+    }
+
+    @Override
+    public void addListener(Observer observer) {
+        observers.add(observer);
+    }
+
+    @Override
+    public void removeListener(Observer observer) {
+        observers.remove(observer);
+    }
+
+    @Override
+    public void updateObservers(){
+        for (Observer o : observers)
+        {
+            o.update();
+        }
     }
 
     public enum PlayerColor {

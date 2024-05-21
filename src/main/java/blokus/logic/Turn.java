@@ -1,16 +1,14 @@
 package blokus.logic;
 
 public class Turn {
-    private Position pos;
-    private Piece piece;
-    private Grid.Angle angleNextTurn;
-    private boolean symmetry;
+    private final Position pos;
+    private final Piece piece;
+    private final Transform transform;
 
-    public Turn(Position pos, Piece piece, Grid.Angle angleNextTurn, boolean symmetry) {
+    public Turn(Position pos, Piece piece, Transform transform) {
         this.pos = pos;
         this.piece = piece;
-        this.angleNextTurn = angleNextTurn;
-        this.symmetry = symmetry;
+        this.transform = transform;
     }
 
     public Position getPos() {
@@ -21,11 +19,7 @@ public class Turn {
         return piece;
     }
 
-    public Grid.Angle getAngleNextTurn() {
-        return angleNextTurn;
-    }
-
-    public boolean isSymmetry() {
-        return symmetry;
+    public Transform getTransform(){
+        return transform;
     }
 }
