@@ -237,9 +237,10 @@ public class Grid implements Observable {
                 : grid[player2Start.x][player2Start.y] == PlayerColor.EMPTY;
         for (int x = 0; x < width; x++) {
             for (int y = 0; y < height; y++) {
+/*
                 if (grid[x][y] != PlayerColor.EMPTY) {
                     break;
-                }
+                }*/
                 boolean hasColorAround = noNeedForColorAround;
                 for (int xp = -3; xp < 3 && !hasColorAround; xp++) {
                     for (int yp = -3; yp < 3; yp++) {

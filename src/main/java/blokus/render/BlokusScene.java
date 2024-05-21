@@ -6,8 +6,10 @@ import blokus.player.PlayerInterface;
 import blokus.player.Player;
 import blokus.utils.Utils;
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.SimpleBooleanProperty;
+import javafx.concurrent.Task;
 import javafx.geometry.Point3D;
 import javafx.scene.*;
 import javafx.scene.input.MouseButton;
@@ -29,7 +31,6 @@ public class BlokusScene extends Application implements Observer {
 
     private boolean canPlay = false;
     private boolean isHoverGrid = false;
-    BooleanProperty shouldUpdate = new SimpleBooleanProperty(false);
 
     private final Group root = new Group();
     public static final Group tempGroup = new Group();
@@ -98,19 +99,11 @@ public class BlokusScene extends Application implements Observer {
 
     private void setUpGame()
     {
-        PlayerInterface player1 = new Player();
+        PlayerInterface player1 = new MinMaxPlayer();
         PlayerInterface player2 = new MinMaxPlayer();
         Grid grid = new Grid(player1, player2);
 
         grid.addListener(this);
-        shouldUpdate.addListener((observable, oldValue, newValue) -> {
-            if (newValue) {
-                System.out.println("Updated from boolean property");
-                //gridRenderer.updateAll();
-                shouldUpdate.set(false);
-            }
-        });
-
 
         setGrid(grid);
     }
@@ -344,9 +337,6 @@ public class BlokusScene extends Application implements Observer {
                 case X:
                     axisGroup.setVisible(!axisGroup.isVisible());
                     break;
-                case U:
-                    gridRenderer.updateAll();
-                    break;
             }
         });
     }
@@ -354,8 +344,9 @@ public class BlokusScene extends Application implements Observer {
 
     @Override
     public void update() {
-        System.out.println("Updated");
-        shouldUpdate.set(true);
-        //gridRenderer.updateAll();
+        Platform.runLater(() -> {
+            gridRenderer.updateAll();
+            updatePieces();
+        });
     }
 }
