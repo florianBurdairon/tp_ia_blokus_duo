@@ -175,8 +175,6 @@ public class Grid implements Observable {
                             break;
                         }
                         if (canFit(transformation, new Position(x, y), player)) {
-                            if (player == PlayerColor.PURPLE)
-                                System.out.println("Player " + player + " can play piece " + piece + " at (" + x + ", " + y + ")");
                             return true;
                         }
                     }
@@ -206,8 +204,8 @@ public class Grid implements Observable {
     }
 
     public boolean isGameFinished() {
-        System.out.println("Orange can play: " + canPlayerPlay(PlayerColor.ORANGE));
-        System.out.println("Purple can play: " + canPlayerPlay(PlayerColor.PURPLE));
+        //System.out.println("Orange can play: " + canPlayerPlay(PlayerColor.ORANGE));
+        //System.out.println("Purple can play: " + canPlayerPlay(PlayerColor.PURPLE));
         return !canPlayerPlay(PlayerColor.ORANGE) && !canPlayerPlay(PlayerColor.PURPLE);
     }
 
@@ -245,8 +243,8 @@ public class Grid implements Observable {
         }
     }
 
-    public Map<Turn, Integer> getPossibleTurns(PlayerColor color, List<Piece> pieces) {
-        Map<Turn, Integer> turns = new HashMap<>();
+    public List<Turn> getPossibleTurns(PlayerColor color, List<Piece> pieces) {
+        List<Turn> turns = new ArrayList<>();
         boolean noNeedForColorAround = color == PlayerColor.ORANGE ?
                 grid[player1Start.x][player1Start.y] == PlayerColor.EMPTY
                 : grid[player2Start.x][player2Start.y] == PlayerColor.EMPTY;
@@ -270,7 +268,7 @@ public class Grid implements Observable {
                         for (Map.Entry<List<Position>, Transform> transformation : piece.getTransformations().entrySet()) {
                             if (canFit(transformation.getKey(), new Position(x, y), color)) {
                                 Turn possibleTurn = new Turn(new Position(x, y), piece, transformation.getValue());
-                                turns.put(possibleTurn, getPlayerScore(pieces) + piece.getCaseNumber());
+                                turns.add(possibleTurn);
                             }
                         }
                     }

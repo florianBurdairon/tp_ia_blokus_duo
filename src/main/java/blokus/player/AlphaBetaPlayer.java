@@ -5,7 +5,6 @@ import blokus.logic.Turn;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Random;
 
 public class AlphaBetaPlayer implements PlayerInterface {
@@ -40,14 +39,14 @@ public class AlphaBetaPlayer implements PlayerInterface {
                     : grid.getPlayerScore(player.next()) - grid.getPlayerScore(player);
         }
         int score;
-        Map<Turn, Integer> possiblesTurns = grid.getPossibleTurns(player, grid.getPlayerPieces(player));
+        List<Turn> possiblesTurns = grid.getPossibleTurns(player, grid.getPlayerPieces(player));
         List<Turn> bestTurns = new ArrayList<>();
         if (maximizing) {
             score = -Integer.MAX_VALUE;
             if (possiblesTurns.isEmpty()) {
                 return grid.getPlayerScore(player.next()) - grid.getPlayerScore(player);
             }
-            for (Turn turn : possiblesTurns.keySet()) {
+            for (Turn turn : possiblesTurns) {
                 grid.placePieceInGrid(turn.getPiece(), turn.getTransform(), turn.getPos(), player);
                 int newScore = alphabeta(depth - 1, false, alpha, beta, player.next());
                 grid.removePieceInGrid(turn.getPiece(), turn.getTransform(), turn.getPos(), player);
@@ -71,7 +70,7 @@ public class AlphaBetaPlayer implements PlayerInterface {
             if (possiblesTurns.isEmpty()) {
                 return grid.getPlayerScore(player) - grid.getPlayerScore(player.next());
             }
-            for (Turn turn : possiblesTurns.keySet()) {
+            for (Turn turn : possiblesTurns) {
                 grid.placePieceInGrid(turn.getPiece(), turn.getTransform(), turn.getPos(), player);
                 int newScore = alphabeta(depth - 1, true, alpha, beta, player.next());
                 grid.removePieceInGrid(turn.getPiece(), turn.getTransform(), turn.getPos(), player);

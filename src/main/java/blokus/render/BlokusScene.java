@@ -1,10 +1,7 @@
 package blokus.render;
 
 import blokus.logic.*;
-import blokus.player.AlphaBetaPlayer;
-import blokus.player.MinMaxPlayer;
-import blokus.player.PlayerInterface;
-import blokus.player.Player;
+import blokus.player.*;
 import blokus.utils.Utils;
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -97,8 +94,8 @@ public class BlokusScene extends Application implements Observer {
 
     private void setUpGame()
     {
-        PlayerInterface player1 = new AlphaBetaPlayer();
-        PlayerInterface player2 = new MinMaxPlayer();
+        PlayerInterface player1 = new MCTSPlayer();
+        PlayerInterface player2 = new MCTSPlayer();
         Grid grid = new Grid(player1, player2);
 
         grid.addListener(this);
