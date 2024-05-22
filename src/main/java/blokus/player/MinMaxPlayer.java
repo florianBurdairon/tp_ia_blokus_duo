@@ -22,7 +22,7 @@ public class MinMaxPlayer implements PlayerInterface {
     public void play(Grid grid) {
         long start = System.currentTimeMillis();
         this.grid = grid;
-        int minmaxScore = minmax(0, true, grid.getGrid(),
+        int minmaxScore = minmax(0, true,
                 grid.getPlayerPieces(grid.getCurrentPlayerColor()),
                 grid.getPlayerPieces(grid.getCurrentPlayerColor().next()));
         System.out.println("Reachable score: " + minmaxScore + " with piece: " + nextTurn.getPiece());
@@ -34,20 +34,20 @@ public class MinMaxPlayer implements PlayerInterface {
         grid.placePiece(nextTurn.getPiece(), nextTurn.getPos(), nextTurn.getTransform());
     }
 
-    private int minmax(int currentDepth, boolean maximizing, Grid.PlayerColor[][] cases, List<Piece> pieces, List<Piece> otherPieces)
+    private int minmax(int currentDepth, boolean maximizing, List<Piece> pieces, List<Piece> otherPieces)
     {
         Grid.PlayerColor player = maximizing ? grid.getCurrentPlayerColor() : grid.getCurrentPlayerColor().next();
         int score = maximizing ? (int)Double.NEGATIVE_INFINITY : (int)Double.POSITIVE_INFINITY;
 
-        Map<Turn, Integer> possiblesTurns = Grid.getPossibleTurns(cases, player, pieces);
-        if (currentDepth <= 1)
-            System.out.println("Nb possibles turns: " + possiblesTurns.size() + " for player " + player + " with pieces: " + pieces.size());
+        Map<Turn, Integer> possiblesTurns = grid.getPossibleTurns(player, pieces);
         for(Turn turn : possiblesTurns.keySet()) {
             int newScore;
             List<Piece> newPieces = new ArrayList<>(pieces);
             newPieces.remove(turn.getPiece());
             if(currentDepth < MINIMAX_DEPTH) {
-                newScore = minmax(currentDepth + 1, !maximizing, Grid.placePieceInGrid(cases, turn.getPiece().getCases(), turn.getPos(), player.next()), otherPieces, newPieces);
+                grid.placePieceInGrid(turn.getPiece(), turn.getTransform(), turn.getPos(), player.next());
+                newScore = minmax(currentDepth + 1, !maximizing, otherPieces, newPieces);
+                grid.removePieceInGrid(turn.getPiece(), turn.getTransform(), turn.getPos());
             } else {
                 newScore = maximizing ?
                         Grid.getPlayerScore(newPieces) - Grid.getPlayerScore(otherPieces)

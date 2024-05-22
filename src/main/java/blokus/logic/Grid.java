@@ -3,10 +3,7 @@ package blokus.logic;
 import blokus.player.PlayerInterface;
 import blokus.utils.Utils;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class Grid implements Observable {
     public static final int width = 14;
@@ -21,7 +18,7 @@ public class Grid implements Observable {
     private static final Position player1Start = new Position(4, 4);
     private static final Position player2Start = new Position(width - 4 - 1, height - 4 - 1);
 
-    private PlayerColor[][] grid;
+    private final PlayerColor[][] grid;
 
     private final PlayerInterface p1;
     private final PlayerInterface p2;
@@ -29,14 +26,11 @@ public class Grid implements Observable {
     private final List<Piece> p1Pieces;
     private final List<Piece> p2Pieces;
 
-    private Piece player1LastPiece = null;
-    private Piece player2LastPiece = null;
+    private final Stack<Piece> player1PlayedPieces = new Stack<>();
+    private final Stack<Piece> player2PlayedPieces = new Stack<>();
 
     private PlayerColor playerTurn = PlayerColor.ORANGE;
     private boolean hasPlayed = false;
-
-    private static boolean isPlayer1FirstTurn = true;
-    private static boolean isPlayer2FirstTurn = true;
 
     public Grid(PlayerInterface p1, PlayerInterface p2) {
         grid = new PlayerColor[width][height];
@@ -64,18 +58,7 @@ public class Grid implements Observable {
 
     public boolean placePiece(Piece piece, Position position, Transform transform) {
         if (canFit(Utils.transform(piece.getCases(), transform), position, playerTurn)) {
-            grid = placePieceInGrid(grid, Utils.transform(piece.getCases(), transform), position, playerTurn);
-            if (playerTurn == PlayerColor.ORANGE) {
-                if (isPlayer1FirstTurn)
-                    isPlayer1FirstTurn = false;
-                player1LastPiece = piece;
-                p1Pieces.remove(piece);
-            } else {
-                if (isPlayer2FirstTurn)
-                    isPlayer2FirstTurn = false;
-                player2LastPiece = piece;
-                p2Pieces.remove(piece);
-            }
+            placePieceInGrid(piece, transform, position, playerTurn);
             hasPlayed = true;
             updateObservers();
             return true;
@@ -83,22 +66,43 @@ public class Grid implements Observable {
         return false;
     }
 
-    public static PlayerColor[][] placePieceInGrid(PlayerColor[][] grid, List<Position> piece, Position position, PlayerColor color) {
-        PlayerColor[][] newGrid = Utils.cloneGrid(grid);
-        for (Position casePos : piece) {
+    public void placePieceInGrid(Piece piece, Transform transformation , Position position, PlayerColor color) {
+        //PlayerColor[][] newGrid = Utils.cloneGrid(grid);
+        List<Position> transform = Utils.transform(piece.getCases(), transformation);
+        for (Position casePos : transform) {
             int x = position.x + casePos.x;
             int y = position.y + casePos.y;
             if(x >= 0 && x < width && y >= 0 && y < height)
-                newGrid[x][y] = color;
+                grid[x][y] = color;
         }
-        return newGrid;
+        if (playerTurn == PlayerColor.ORANGE) {
+                player1PlayedPieces.push(piece);
+                p1Pieces.remove(piece);
+        } else {
+            player2PlayedPieces.push(piece);
+            p2Pieces.remove(piece);
+        }
+    }
+
+    public void removePieceInGrid(Piece piece, Transform transformation, Position position) {
+        //PlayerColor[][] newGrid = Utils.cloneGrid(grid);
+        List<Position> transform = Utils.transform(piece.getCases(), transformation);
+        for (Position casePos : transform) {
+            int x = position.x + casePos.x;
+            int y = position.y + casePos.y;
+            if(x >= 0 && x < width && y >= 0 && y < height)
+                grid[x][y] = PlayerColor.EMPTY;
+        }
+        if (playerTurn == PlayerColor.ORANGE) {
+            player1PlayedPieces.pop();
+            p1Pieces.add(piece);
+        } else {
+            player2PlayedPieces.pop();
+            p2Pieces.add(piece);
+        }
     }
 
     public boolean canFit(List<Position> cases, Position position, PlayerColor color) {
-        return canFitInGrid(grid, cases, position, color);
-    }
-
-    public static boolean canFitInGrid(PlayerColor[][] grid, List<Position> cases, Position position, PlayerColor color) {
         boolean haveOneCorner = false;
         try {
             for (Position casePos : cases) {
@@ -106,10 +110,10 @@ public class Grid implements Observable {
                 int y = position.y + casePos.y;
 
                 // Check if piece is on the starting points
-                if(color == PlayerColor.ORANGE && isPlayer1FirstTurn && x == player1Start.x && y == player1Start.y) {
+                if(color == PlayerColor.ORANGE && player1PlayedPieces.isEmpty() && x == player1Start.x && y == player1Start.y) {
                     return true;
                 }
-                if(color == PlayerColor.PURPLE && isPlayer2FirstTurn && x == player2Start.x && y == player2Start.y) {
+                if(color == PlayerColor.PURPLE && player2PlayedPieces.isEmpty() && x == player2Start.x && y == player2Start.y) {
                     return true;
                 }
 
@@ -202,10 +206,10 @@ public class Grid implements Observable {
         int purpleScore = p2Pieces.isEmpty() ? bonusAllPiecesPlaced : 0;
 
         // Bonus if player ended with the smallest piece
-        if (player1LastPiece != null && player1LastPiece.getCaseNumber() == 1) {
+        if (player1PlayedPieces.isEmpty() && player1PlayedPieces.peek().getCaseNumber() == 1) {
             orangeScore += bonusSmallPiece;
         }
-        if (player2LastPiece != null && player2LastPiece.getCaseNumber() == 1) {
+        if (player2PlayedPieces.isEmpty() && player2PlayedPieces.peek().getCaseNumber() == 1) {
             purpleScore += bonusSmallPiece;
         }
 
@@ -230,7 +234,7 @@ public class Grid implements Observable {
         }
     }
 
-    public static Map<Turn, Integer> getPossibleTurns(PlayerColor[][] grid, PlayerColor color, List<Piece> pieces) {
+    public Map<Turn, Integer> getPossibleTurns(PlayerColor color, List<Piece> pieces) {
         Map<Turn, Integer> turns = new HashMap<>();
         boolean noNeedForColorAround = color == PlayerColor.ORANGE ?
                 grid[player1Start.x][player1Start.y] == PlayerColor.EMPTY
@@ -253,7 +257,7 @@ public class Grid implements Observable {
                 if (hasColorAround) {
                     for (Piece piece : pieces) {
                         for (Map.Entry<List<Position>, Transform> transformation : piece.getTransformations().entrySet()) {
-                            if (canFitInGrid(grid, transformation.getKey(), new Position(x, y), color)) {
+                            if (canFit(transformation.getKey(), new Position(x, y), color)) {
                                 Turn possibleTurn = new Turn(new Position(x, y), piece, transformation.getValue());
                                 turns.put(possibleTurn, getPlayerScore(pieces) + piece.getCaseNumber());
                             }

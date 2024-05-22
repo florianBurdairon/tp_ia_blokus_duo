@@ -1,15 +1,12 @@
 package blokus.render;
 
 import blokus.logic.*;
-import blokus.player.MinMaxPlayer;
+import blokus.player.AlphaBetaPlayer;
 import blokus.player.PlayerInterface;
 import blokus.player.Player;
 import blokus.utils.Utils;
 import javafx.application.Application;
 import javafx.application.Platform;
-import javafx.beans.property.BooleanProperty;
-import javafx.beans.property.SimpleBooleanProperty;
-import javafx.concurrent.Task;
 import javafx.geometry.Point3D;
 import javafx.scene.*;
 import javafx.scene.input.MouseButton;
@@ -99,8 +96,8 @@ public class BlokusScene extends Application implements Observer {
 
     private void setUpGame()
     {
-        PlayerInterface player1 = new MinMaxPlayer();
-        PlayerInterface player2 = new MinMaxPlayer();
+        PlayerInterface player1 = new AlphaBetaPlayer();
+        PlayerInterface player2 = new AlphaBetaPlayer();
         Grid grid = new Grid(player1, player2);
 
         grid.addListener(this);
