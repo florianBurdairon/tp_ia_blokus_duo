@@ -1,12 +1,12 @@
 package blokus.player;
 
 import blokus.logic.Grid;
-import blokus.logic.Piece;
 import blokus.logic.Turn;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
 public class AlphaBetaPlayer implements PlayerInterface {
     private static final int ALPHABETA_DEPTH = 2;
@@ -22,8 +22,7 @@ public class AlphaBetaPlayer implements PlayerInterface {
         long start = System.currentTimeMillis();
         this.grid = grid;
         int minmaxScore = alphabeta(ALPHABETA_DEPTH, true, -Integer.MAX_VALUE, Integer.MAX_VALUE,
-                grid.getPlayerPieces(grid.getCurrentPlayerColor()),
-                grid.getPlayerPieces(grid.getCurrentPlayerColor().next()));
+                grid.getCurrentPlayerColor());
         System.out.println("Reachable score: " + minmaxScore + " with piece: " + nextTurn.getPiece());
 
         try {
@@ -33,77 +32,34 @@ public class AlphaBetaPlayer implements PlayerInterface {
         grid.placePiece(nextTurn.getPiece(), nextTurn.getPos(), nextTurn.getTransform());
     }
 
-    private int alphabeta(int depth, boolean maximizing, int alpha, int beta, List<Piece> pieces, List<Piece> otherPieces)
+    private int alphabeta(int depth, boolean maximizing, int alpha, int beta, Grid.PlayerColor player)
     {
-//        Grid.PlayerColor player = maximizing ? grid.getCurrentPlayerColor() : grid.getCurrentPlayerColor().next();
-//        int score = maximizing ? -Integer.MAX_VALUE : Integer.MAX_VALUE;
-//
-//        Map<Turn, Integer> possiblesTurns = Grid.getPossibleTurns(cases, player, pieces);
-//        for(Turn turn : possiblesTurns.keySet()) {
-//            int newScore;
-//            List<Piece> newPieces = new ArrayList<>(pieces);
-//            newPieces.remove(turn.getPiece());
-//            if(currentDepth < ALPHABETA_DEPTH) {
-//                newScore = alphabeta(currentDepth + 1, !maximizing, alpha, beta, Grid.placePieceInGrid(cases, turn.getPiece().getCases(), turn.getPos(), player.next()), otherPieces, newPieces);
-//            } else {
-//                newScore = maximizing ?
-//                        Grid.getPlayerScore(newPieces) - Grid.getPlayerScore(otherPieces)
-//                        : Grid.getPlayerScore(otherPieces) - Grid.getPlayerScore(newPieces);
-//            }
-//            if (maximizing) {
-//                score = Math.max(score, newScore);
-//                if (beta <= score)
-//                    break;
-//                alpha = Math.max(alpha, score);
-//            } else {
-//                score = Math.min(score, newScore);
-//                if (score <= alpha)
-//                    break;
-//                beta = Math.min(beta, score);
-//            }
-//            if (currentDepth == 0)
-//                possiblesTurns.put(turn, newScore);
-//        }
-//        if (currentDepth == 0) {
-//            List<Turn> possibleTurns = new ArrayList<>();
-//            for(Turn turn : possiblesTurns.keySet())
-//            {
-//                if (possiblesTurns.get(turn) == score) {
-//                    possibleTurns.add(turn);
-//                }
-//            }
-//            if (possibleTurns.isEmpty()) {
-//                System.err.println("No possible turns found, should not be possible here");
-//                return 0;
-//            }
-//            int index = new Random().nextInt(possibleTurns.size());
-//            nextTurn = possibleTurns.get(index);
-//        }
-//        return score;
         if (depth == 0) {
             return  maximizing ?
-                    Grid.getPlayerScore(otherPieces) - Grid.getPlayerScore(pieces)
-                    : Grid.getPlayerScore(pieces) - Grid.getPlayerScore(otherPieces);
+                    grid.getPlayerScore(player) - grid.getPlayerScore(player.next())
+                    : grid.getPlayerScore(player.next()) - grid.getPlayerScore(player);
         }
         int score;
-        Map<Turn, Integer> possiblesTurns;
+        Map<Turn, Integer> possiblesTurns = grid.getPossibleTurns(player, grid.getPlayerPieces(player));
+        List<Turn> bestTurns = new ArrayList<>();
         if (maximizing) {
             score = -Integer.MAX_VALUE;
-            possiblesTurns = grid.getPossibleTurns(grid.getCurrentPlayerColor(), pieces);
             if (possiblesTurns.isEmpty()) {
-                return Grid.getPlayerScore(otherPieces) - Grid.getPlayerScore(pieces);
+                return grid.getPlayerScore(player.next()) - grid.getPlayerScore(player);
             }
             for (Turn turn : possiblesTurns.keySet()) {
-                List<Piece> newPieces = new ArrayList<>(pieces);
-                newPieces.remove(turn.getPiece());
-                grid.placePieceInGrid(turn.getPiece(), turn.getTransform(), turn.getPos(), grid.getCurrentPlayerColor());
-                int newScore = alphabeta(depth - 1, false, alpha, beta, otherPieces, newPieces);
-                grid.removePieceInGrid(turn.getPiece(), turn.getTransform(), turn.getPos());
+                grid.placePieceInGrid(turn.getPiece(), turn.getTransform(), turn.getPos(), player);
+                int newScore = alphabeta(depth - 1, false, alpha, beta, player.next());
+                grid.removePieceInGrid(turn.getPiece(), turn.getTransform(), turn.getPos(), player);
                 if (newScore > score) {
                     score = newScore;
                     if (depth == ALPHABETA_DEPTH) {
-                        nextTurn = turn;
+                        bestTurns.clear();
+                        bestTurns.add(turn);
                     }
+                }
+                else if (newScore == score && depth == ALPHABETA_DEPTH) {
+                    bestTurns.add(turn);
                 }
                 alpha = Math.max(alpha, score);
                 if (score > beta) {
@@ -112,16 +68,13 @@ public class AlphaBetaPlayer implements PlayerInterface {
             }
         } else {
             score = Integer.MAX_VALUE;
-            possiblesTurns = grid.getPossibleTurns(grid.getCurrentPlayerColor().next(), otherPieces);
             if (possiblesTurns.isEmpty()) {
-                return Grid.getPlayerScore(pieces) - Grid.getPlayerScore(otherPieces);
+                return grid.getPlayerScore(player) - grid.getPlayerScore(player.next());
             }
             for (Turn turn : possiblesTurns.keySet()) {
-                List<Piece> newPieces = new ArrayList<>(otherPieces);
-                newPieces.remove(turn.getPiece());
-                grid.placePieceInGrid(turn.getPiece(), turn.getTransform(), turn.getPos(), grid.getCurrentPlayerColor());
-                int newScore = alphabeta(depth - 1, true, alpha, beta, pieces, newPieces);
-                grid.removePieceInGrid(turn.getPiece(), turn.getTransform(), turn.getPos());
+                grid.placePieceInGrid(turn.getPiece(), turn.getTransform(), turn.getPos(), player);
+                int newScore = alphabeta(depth - 1, true, alpha, beta, player.next());
+                grid.removePieceInGrid(turn.getPiece(), turn.getTransform(), turn.getPos(), player);
                 if (newScore < score) {
                     score = newScore;
                 }
@@ -131,6 +84,10 @@ public class AlphaBetaPlayer implements PlayerInterface {
                 }
             }
 
+        }
+        if (depth == ALPHABETA_DEPTH) {
+            int index = new Random().nextInt(bestTurns.size());
+            nextTurn = bestTurns.get(index);
         }
         return score;
     }

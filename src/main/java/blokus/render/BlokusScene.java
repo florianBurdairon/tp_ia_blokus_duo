@@ -2,6 +2,7 @@ package blokus.render;
 
 import blokus.logic.*;
 import blokus.player.AlphaBetaPlayer;
+import blokus.player.MinMaxPlayer;
 import blokus.player.PlayerInterface;
 import blokus.player.Player;
 import blokus.utils.Utils;
@@ -97,7 +98,7 @@ public class BlokusScene extends Application implements Observer {
     private void setUpGame()
     {
         PlayerInterface player1 = new AlphaBetaPlayer();
-        PlayerInterface player2 = new AlphaBetaPlayer();
+        PlayerInterface player2 = new MinMaxPlayer();
         Grid grid = new Grid(player1, player2);
 
         grid.addListener(this);
@@ -216,7 +217,7 @@ public class BlokusScene extends Application implements Observer {
         pieces1Group.getChildren().clear();
         pieces2Group.getChildren().clear();
 
-        List<Piece> p1Pieces = grid.getP1Pieces();
+        List<Piece> p1Pieces = grid.currentP1Pieces;
         Position pos = new Position(-Grid.width * 9, -Grid.width /2 * CellRenderer.cellSize);
         for (Piece p : p1Pieces){
             if (pos.y > Grid.width * CellRenderer.cellSize) {
@@ -234,7 +235,7 @@ public class BlokusScene extends Application implements Observer {
             });
         }
 
-        List<Piece> p2Pieces = grid.getP2Pieces();
+        List<Piece> p2Pieces = grid.currentP2Pieces;
         pos = new Position(Grid.width * 18, -Grid.width/2 * CellRenderer.cellSize);
         for (Piece p : p2Pieces){
             if (pos.y > Grid.width * CellRenderer.cellSize) {

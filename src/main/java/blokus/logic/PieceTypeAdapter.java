@@ -16,6 +16,7 @@ public class PieceTypeAdapter extends TypeAdapter<Piece> {
     @Override
     public void write(JsonWriter out, Piece piece) throws IOException {
         out.beginObject();
+        out.name("id").value(piece.getId());
         out.name("case_number").value(piece.getCaseNumber());
         out.name("cases");
         Type listOfPositionObject = new TypeToken<ArrayList<Position>>() {}.getType();
@@ -26,10 +27,14 @@ public class PieceTypeAdapter extends TypeAdapter<Piece> {
     @Override
     public Piece read(JsonReader in) throws IOException {
         in.beginObject();
+        int id = 0;
         int caseNumber = 0;
         List<Position> cases = null;
         while (in.hasNext()) {
             switch (in.nextName()) {
+                case "id":
+                    id = in.nextInt();
+                    break;
                 case "case_number":
                     caseNumber = in.nextInt();
                     break;
@@ -40,6 +45,6 @@ public class PieceTypeAdapter extends TypeAdapter<Piece> {
             }
         }
         in.endObject();
-        return new Piece(caseNumber, cases);
+        return new Piece(id, caseNumber, cases);
     }
 }

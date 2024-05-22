@@ -8,23 +8,25 @@ import java.util.*;
 public class Grid implements Observable {
     public static final int width = 14;
     public static final int height = 14;
-    public static final int startScore = -89;
 
-    private final int bonusAllPiecesPlaced = 15;
-    private final int bonusSmallPiece = 5;
+    public static final int bonusAllPiecesPlaced = 15;
+    public static final int bonusSmallPiece = 5;
+
+    public static final Position player1Start = new Position(4, 4);
+    public static final Position player2Start = new Position(width - 4 - 1, height - 4 - 1);
 
     private final List<Observer> observers = new ArrayList<>();
 
-    private static final Position player1Start = new Position(4, 4);
-    private static final Position player2Start = new Position(width - 4 - 1, height - 4 - 1);
-
     private final PlayerColor[][] grid;
+    public PlayerColor[][] currentGrid;
 
     private final PlayerInterface p1;
     private final PlayerInterface p2;
 
     private final List<Piece> p1Pieces;
+    public List<Piece> currentP1Pieces;
     private final List<Piece> p2Pieces;
+    public List<Piece> currentP2Pieces;
 
     private final Stack<Piece> player1PlayedPieces = new Stack<>();
     private final Stack<Piece> player2PlayedPieces = new Stack<>();
@@ -39,12 +41,15 @@ public class Grid implements Observable {
                 grid[x][y] = PlayerColor.EMPTY;
             }
         }
+        currentGrid = Utils.cloneGrid(grid);
 
         this.p1 = p1;
         this.p2 = p2;
 
         p1Pieces = Piece.getPieces();
         p2Pieces = Piece.getPieces();
+        currentP1Pieces = new ArrayList<>(p1Pieces);
+        currentP2Pieces = new ArrayList<>(p2Pieces);
     }
 
     public void start(){
@@ -60,6 +65,11 @@ public class Grid implements Observable {
         if (canFit(Utils.transform(piece.getCases(), transform), position, playerTurn)) {
             placePieceInGrid(piece, transform, position, playerTurn);
             hasPlayed = true;
+            currentGrid = Utils.cloneGrid(grid);
+            currentP1Pieces = new ArrayList<>(p1Pieces);
+            currentP1Pieces.sort(Comparator.comparingInt(Piece::getId));
+            currentP2Pieces = new ArrayList<>(p2Pieces);
+            currentP2Pieces.sort(Comparator.comparingInt(Piece::getId));
             updateObservers();
             return true;
         }
@@ -72,28 +82,28 @@ public class Grid implements Observable {
         for (Position casePos : transform) {
             int x = position.x + casePos.x;
             int y = position.y + casePos.y;
-            if(x >= 0 && x < width && y >= 0 && y < height)
-                grid[x][y] = color;
+//            if(x >= 0 && x < width && y >= 0 && y < height)
+            grid[x][y] = color;
         }
-        if (playerTurn == PlayerColor.ORANGE) {
-                player1PlayedPieces.push(piece);
-                p1Pieces.remove(piece);
+        if (color == PlayerColor.ORANGE) {
+            player1PlayedPieces.push(piece);
+            p1Pieces.remove(piece);
         } else {
             player2PlayedPieces.push(piece);
             p2Pieces.remove(piece);
         }
     }
 
-    public void removePieceInGrid(Piece piece, Transform transformation, Position position) {
+    public void removePieceInGrid(Piece piece, Transform transformation, Position position, PlayerColor color) {
         //PlayerColor[][] newGrid = Utils.cloneGrid(grid);
         List<Position> transform = Utils.transform(piece.getCases(), transformation);
         for (Position casePos : transform) {
             int x = position.x + casePos.x;
             int y = position.y + casePos.y;
-            if(x >= 0 && x < width && y >= 0 && y < height)
-                grid[x][y] = PlayerColor.EMPTY;
+//            if(x >= 0 && x < width && y >= 0 && y < height)
+            grid[x][y] = PlayerColor.EMPTY;
         }
-        if (playerTurn == PlayerColor.ORANGE) {
+        if (color == PlayerColor.ORANGE) {
             player1PlayedPieces.pop();
             p1Pieces.add(piece);
         } else {
@@ -183,6 +193,7 @@ public class Grid implements Observable {
             } else {
                 p2.play(this);
             }
+            // Wait for player to place a piece
             while (!hasPlayed) {
                 try {
                     Thread.sleep(100);
@@ -269,6 +280,10 @@ public class Grid implements Observable {
         return turns;
     }
 
+    public int getPlayerScore(PlayerColor player) {
+        return getPlayerScore(getPlayerPieces(player));
+    }
+
     public static int getPlayerScore(List<Piece> pieces) {
         int score = 0;
         for (Piece piece : pieces) {
@@ -283,14 +298,6 @@ public class Grid implements Observable {
 
     public PlayerColor getCase(int x, int y) {
         return grid[x][y];
-    }
-
-    public List<Piece> getP1Pieces() {
-        return p1Pieces;    
-    }
-
-    public List<Piece> getP2Pieces() {
-        return p2Pieces;
     }
 
     public List<Piece> getPlayerPieces(PlayerColor player)

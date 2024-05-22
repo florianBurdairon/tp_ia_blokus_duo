@@ -1,31 +1,29 @@
 package blokus.render;
 
 import blokus.logic.Grid;
+import blokus.logic.Position;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.PhongMaterial;
 import javafx.scene.shape.MeshView;
 import javafx.scene.shape.TriangleMesh;
 
 public class GridCellRenderer extends CellRenderer {
-    private final int x;
-    private final int y;
+    private final Position pos;
 
-    public GridCellRenderer(int x, int y) {
-        this.x = x;
-        this.y = y;
+    public GridCellRenderer(Position pos) {
+        this.pos = pos;
     }
 
     void buildObject()
     {
-        boolean isStartingPoint = x == y && (x == -3 || x == 2);
+        boolean isP1StartingPoint = Grid.player1Start.equals(pos.add(new Position(Grid.width/2, Grid.height/2)));
+        boolean isP2StartingPoint = Grid.player2Start.equals(pos.add(new Position(Grid.width/2, Grid.height/2)));
 
         final PhongMaterial material = new PhongMaterial();
         material.setDiffuseColor(Color.WHITE);
-        material.setSpecularColor(Color.WHITE);
 
         final PhongMaterial materialBottom = new PhongMaterial();
-        materialBottom.setDiffuseColor(isStartingPoint ? Color.GREY : Color.LIGHTGREY);
-        materialBottom.setSpecularColor(isStartingPoint ? Color.GREY : Color.LIGHTGREY);
+        materialBottom.setDiffuseColor(isP1StartingPoint ? Color.rgb(255, 180, 76) : isP2StartingPoint ? Color.rgb(184, 70, 187) : Color.LIGHTGREY);
 
         TriangleMesh mesh = new TriangleMesh();
         mesh.getPoints().addAll(
@@ -68,7 +66,7 @@ public class GridCellRenderer extends CellRenderer {
         meshViewBottom.setMaterial(materialBottom);
 
         world.getChildren().addAll(meshView, meshViewBottom);
-        world.setTranslateX(x);
-        world.setTranslateZ(y);
+        world.setTranslateX(pos.x);
+        world.setTranslateZ(pos.y);
     }
 }

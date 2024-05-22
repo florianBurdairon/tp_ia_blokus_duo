@@ -12,11 +12,13 @@ import java.util.List;
 import java.util.Map;
 
 public class Piece implements Serializable {
+    private final int id;
     private final int caseNumber;
     private final ArrayList<Position> cases;
     private final Map<List<Position>, Transform> transformations = new HashMap<>();
 
-    public Piece(int caseNumber, List<Position> cases) {
+    public Piece(int id, int caseNumber, List<Position> cases) {
+        this.id = id;
         this.caseNumber = caseNumber;
         this.cases = new ArrayList<>(cases);
 
@@ -36,6 +38,10 @@ public class Piece implements Serializable {
                 }
             }
         }
+    }
+
+    public int getId() {
+        return id;
     }
 
     public int getCaseNumber() {

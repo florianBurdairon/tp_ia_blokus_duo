@@ -12,7 +12,7 @@ public class Player implements PlayerInterface {
 
     @Override
     public void play(Grid grid) {
-        askForPlay.accept(grid.getP1Pieces());
+        askForPlay.accept(grid.getPlayerPieces(grid.getCurrentPlayerColor()));
     }
 
 //    public boolean playPieceAt(Piece piece, Position pos) {
