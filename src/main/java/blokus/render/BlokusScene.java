@@ -89,7 +89,14 @@ public class BlokusScene extends Application implements Observer {
         primaryStage.setScene(scene);
         primaryStage.show();
 
-        new Thread(() -> grid.start()).start();
+        Thread gameThread = grid;
+        gameThread.start();
+        primaryStage.setOnCloseRequest(we -> {
+            if (gameThread.isAlive()) {
+                System.err.println("GAME THREAD INTERRUPTED");
+                gameThread.interrupt();
+            }
+        });
     }
 
     private void setUpGame()
@@ -154,7 +161,6 @@ public class BlokusScene extends Application implements Observer {
     }
 
     private void buildCamera() {
-        System.out.println("Building camera");
         root.getChildren().add(cameraXForm);
         cameraXForm.getChildren().add(cameraXForm2);
         cameraXForm2.getChildren().add(cameraXForm3);
@@ -164,14 +170,11 @@ public class BlokusScene extends Application implements Observer {
         camera.setNearClip(CAMERA_NEAR_CLIP);
         camera.setFarClip(CAMERA_FAR_CLIP);
         camera.setTranslateZ(CAMERA_INITIAL_DISTANCE);
-        System.out.println("FOV: " + camera.getFieldOfView());
         cameraXForm.ry.setAngle(CAMERA_INITIAL_Y_ANGLE);
         cameraXForm.rx.setAngle(CAMERA_INITIAL_X_ANGLE);
     }
 
     private void buildLight() {
-        System.out.println("Building lights");
-
         DirectionalLight directionalLight = new DirectionalLight();
         directionalLight.setDirection(new Point3D(0.5, -1, 0.5));
 
@@ -183,7 +186,6 @@ public class BlokusScene extends Application implements Observer {
     }
 
     private void buildAxes() {
-        System.out.println("Building axes");
         final PhongMaterial redMaterial = new PhongMaterial();
         redMaterial.setDiffuseColor(Color.DARKRED);
         redMaterial.setSpecularColor(Color.RED);

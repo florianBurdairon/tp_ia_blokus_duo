@@ -6,4 +6,5 @@ module blokus {
     exports blokus.logic;
     exports blokus.player;
     exports blokus.utils;
+    exports blokus.ai_logic;
 }

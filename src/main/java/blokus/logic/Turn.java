@@ -22,4 +22,13 @@ public class Turn {
     public Transform getTransform(){
         return transform;
     }
+
+    @Override
+    public String toString() {
+        return "Turn{" +
+                "pos=" + pos +
+                ", piece=" + piece +
+                ", transform=" + transform +
+                '}';
+    }
 }

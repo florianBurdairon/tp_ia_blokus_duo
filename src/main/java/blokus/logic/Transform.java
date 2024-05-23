@@ -8,4 +8,9 @@ public class Transform {
         this.angle = angle;
         this.symmetry = symmetry;
     }
+
+    @Override
+    public String toString() {
+        return "{" + angle + ", " + symmetry + "}";
+    }
 }

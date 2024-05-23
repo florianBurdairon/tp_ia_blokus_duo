@@ -20,9 +20,7 @@ public class AlphaBetaPlayer implements PlayerInterface {
     public void play(Grid grid) {
         long start = System.currentTimeMillis();
         this.grid = grid;
-        int minmaxScore = alphabeta(ALPHABETA_DEPTH, true, -Integer.MAX_VALUE, Integer.MAX_VALUE,
-                grid.getCurrentPlayerColor());
-        System.out.println("Reachable score: " + minmaxScore + " with piece: " + nextTurn.getPiece());
+        alphabeta(ALPHABETA_DEPTH, true, -Integer.MAX_VALUE, Integer.MAX_VALUE, grid.getCurrentPlayerColor());
 
         try {
             Thread.sleep(Math.max(0, processTime - (System.currentTimeMillis() - start)));

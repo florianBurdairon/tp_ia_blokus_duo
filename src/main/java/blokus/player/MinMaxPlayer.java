@@ -20,8 +20,7 @@ public class MinMaxPlayer implements PlayerInterface {
     public void play(Grid grid) {
         long start = System.currentTimeMillis();
         this.grid = grid;
-        int minmaxScore = minmax(MINIMAX_DEPTH, true, grid.getCurrentPlayerColor());
-        System.out.println("Reachable score: " + minmaxScore + " with piece: " + nextTurn.getPiece());
+        minmax(MINIMAX_DEPTH, true, grid.getCurrentPlayerColor());
 
         try {
             Thread.sleep(Math.max(0, processTime - (System.currentTimeMillis() - start)));

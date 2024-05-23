@@ -5,7 +5,7 @@ import blokus.utils.Utils;
 
 import java.util.*;
 
-public class Grid implements Observable {
+public class Grid extends Thread implements Observable, Cloneable, Runnable {
     public static final int width = 14;
     public static final int height = 14;
 
@@ -33,6 +33,17 @@ public class Grid implements Observable {
 
     private PlayerColor playerTurn = PlayerColor.ORANGE;
     private boolean hasPlayed = false;
+    private boolean isInterrupt = false;
+
+    private Grid(Grid grid) {
+        this.p1 = grid.p1;
+        this.p2 = grid.p2;
+        this.grid = Utils.cloneGrid(grid.grid);
+        this.p1Pieces = new ArrayList<>(List.copyOf(grid.p1Pieces));
+        this.p2Pieces = new ArrayList<>(List.copyOf(grid.p2Pieces));
+        this.player1PlayedPieces.addAll(grid.player1PlayedPieces.stream().toList());
+        this.player2PlayedPieces.addAll(grid.player2PlayedPieces.stream().toList());
+    }
 
     public Grid(PlayerInterface p1, PlayerInterface p2) {
         grid = new PlayerColor[width][height];
@@ -52,13 +63,18 @@ public class Grid implements Observable {
         currentP2Pieces = new ArrayList<>(p2Pieces);
     }
 
-    public void start(){
-        while (!isGameFinished()) {
+    @Override
+    public void run(){
+        while (!isGameFinished() && !isInterrupt) {
             playTurn();
             playerTurn = playerTurn.next();
         }
-        System.out.println("Game finished");
-        System.out.println("Winner is " + getWinner());
+        if (!isInterrupt) {
+            System.out.println("Game finished");
+            System.out.println("Winner is " + getWinner());
+            System.out.println("Orange score: " + getTotalPlayerScore(PlayerColor.ORANGE));
+            System.out.println("Purple score: " + getTotalPlayerScore(PlayerColor.PURPLE));
+        }
     }
 
     public boolean placePiece(Piece piece, Position position, Transform transform) {
@@ -170,21 +186,7 @@ public class Grid implements Observable {
 
     public boolean canPlayerPlay(PlayerColor player) {
         List<Piece> pieces = new ArrayList<>(player == PlayerColor.ORANGE ? p1Pieces : p2Pieces);
-        for (Piece piece : pieces) {
-            for (int x = 0; x < width; x++) {
-                for (int y = 0; y < height; y++) {
-                    for (List<Position> transformation : piece.getTransformations().keySet()) {
-                        if (grid[x][y] != PlayerColor.EMPTY) {
-                            break;
-                        }
-                        if (canFit(transformation, new Position(x, y), player)) {
-                            return true;
-                        }
-                    }
-                }
-            }
-        }
-        return false;
+        return !getPossibleTurns(player, pieces, 1).isEmpty();
     }
 
     public void playTurn() {
@@ -195,7 +197,7 @@ public class Grid implements Observable {
                 p2.play(this);
             }
             // Wait for player to place a piece
-            while (!hasPlayed) {
+            while (!hasPlayed && !isInterrupt) {
                 try {
                     Thread.sleep(100);
                 } catch (InterruptedException e) {
@@ -207,34 +209,13 @@ public class Grid implements Observable {
     }
 
     public boolean isGameFinished() {
-        //System.out.println("Orange can play: " + canPlayerPlay(PlayerColor.ORANGE));
-        //System.out.println("Purple can play: " + canPlayerPlay(PlayerColor.PURPLE));
         return !canPlayerPlay(PlayerColor.ORANGE) && !canPlayerPlay(PlayerColor.PURPLE);
     }
 
     public PlayerColor getWinner() {
-        // Bonus if player placed all its pieces
-        int orangeScore = p1Pieces.isEmpty() ? bonusAllPiecesPlaced : 0;
-        int purpleScore = p2Pieces.isEmpty() ? bonusAllPiecesPlaced : 0;
-
-        // Bonus if player ended with the smallest piece
-        if (player1PlayedPieces.isEmpty() && player1PlayedPieces.peek().getCaseNumber() == 1) {
-            orangeScore += bonusSmallPiece;
-        }
-        if (player2PlayedPieces.isEmpty() && player2PlayedPieces.peek().getCaseNumber() == 1) {
-            purpleScore += bonusSmallPiece;
-        }
-
-        // Minus if player has pieces left
-        for (Piece piece : p1Pieces) {
-            orangeScore -= piece.getCaseNumber();
-        }
-        for (Piece piece : p2Pieces) {
-            purpleScore -= piece.getCaseNumber();
-        }
-
-        System.out.println("Orange score: " + orangeScore);
-        System.out.println("Purple score: " + purpleScore);
+        // Score with bonus
+        int orangeScore = getTotalPlayerScore(PlayerColor.ORANGE);
+        int purpleScore = getTotalPlayerScore(PlayerColor.PURPLE);
 
         // Winner is biggest score
         if (orangeScore > purpleScore) {
@@ -247,16 +228,16 @@ public class Grid implements Observable {
     }
 
     public List<Turn> getPossibleTurns(PlayerColor color, List<Piece> pieces) {
+        return getPossibleTurns(color, pieces, Integer.MAX_VALUE);
+    }
+
+    public List<Turn> getPossibleTurns(PlayerColor color, List<Piece> pieces, int nbResults) {
         List<Turn> turns = new ArrayList<>();
         boolean noNeedForColorAround = color == PlayerColor.ORANGE ?
                 grid[player1Start.x][player1Start.y] == PlayerColor.EMPTY
                 : grid[player2Start.x][player2Start.y] == PlayerColor.EMPTY;
         for (int x = 0; x < width; x++) {
             for (int y = 0; y < height; y++) {
-/*
-                if (grid[x][y] != PlayerColor.EMPTY) {
-                    break;
-                }*/
                 boolean hasColorAround = noNeedForColorAround;
                 for (int xp = -3; xp < 3 && !hasColorAround; xp++) {
                     for (int yp = -3; yp < 3; yp++) {
@@ -272,6 +253,9 @@ public class Grid implements Observable {
                             if (canFit(transformation.getKey(), new Position(x, y), color)) {
                                 Turn possibleTurn = new Turn(new Position(x, y), piece, transformation.getValue());
                                 turns.add(possibleTurn);
+                                if (turns.size() >= nbResults) {
+                                    return turns;
+                                }
                             }
                         }
                     }
@@ -289,6 +273,16 @@ public class Grid implements Observable {
         int score = 0;
         for (Piece piece : pieces) {
             score -= piece.getCaseNumber();
+        }
+        return score;
+    }
+
+    public int getTotalPlayerScore(PlayerColor player) {
+        List<Piece> pieces = getPlayerPieces(player);
+        int score = pieces.isEmpty() ? bonusAllPiecesPlaced : getPlayerScore(pieces);
+        Stack<Piece> piecesPlayed = player == PlayerColor.ORANGE ? player1PlayedPieces : player2PlayedPieces;
+        if (piecesPlayed.peek().getCaseNumber() == 1) {
+            score += bonusSmallPiece;
         }
         return score;
     }
@@ -341,6 +335,22 @@ public class Grid implements Observable {
         {
             o.update();
         }
+    }
+
+    @Override
+    public void interrupt() {
+        super.interrupt();
+        isInterrupt = true;
+    }
+
+    @Override
+    public boolean isInterrupted() {
+        return isInterrupt;
+    }
+
+    @Override
+    public Grid clone() {
+        return new Grid(this);
     }
 
     public enum PlayerColor {
