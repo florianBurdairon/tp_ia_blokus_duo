@@ -24,18 +24,20 @@ public class MCTSPlayer implements PlayerInterface{
         color = grid.getCurrentPlayerColor();
         currentPlayer = color;
         root = new MCTSNode(new Turn(null, null, null), grid, color);
-        MCTS(grid);
+        do {
+            MCTS(grid);
 
-        try {
-            Thread.sleep(Math.max(0, processTime - (System.currentTimeMillis() - start)));
-        } catch (InterruptedException ignored) {
-        }
-        grid.placePiece(nextTurn.getPiece(), nextTurn.getPos(), nextTurn.getTransform());
+            try {
+                Thread.sleep(Math.max(0, processTime - (System.currentTimeMillis() - start)));
+            } catch (InterruptedException ignored) {
+            }
+        } while (!grid.placePiece(nextTurn.getPiece(), nextTurn.getPos(), nextTurn.getTransform()));
     }
 
     public void MCTS(Grid grid) {
         for (int i = 0; i < nbSimulations; i++) {
-            root.expand(grid);
+            System.out.println("Simulation " + i);
+            root.expand(grid, 0);
         }
         float maxChance = 0;
         for (Map.Entry<Turn, MCTSNode> child : root.getChildren().entrySet()) {

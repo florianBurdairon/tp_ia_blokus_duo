@@ -73,6 +73,9 @@ public class Grid implements Observable {
             updateObservers();
             return true;
         }
+        else {
+            System.out.println("Piece can't be placed");
+        }
         return false;
     }
 
