@@ -101,8 +101,8 @@ public class BlokusScene extends Application implements Observer {
 
     private void setUpGame()
     {
-        PlayerInterface player1 = new MCTSPlayer();
-        PlayerInterface player2 = new MCTSPlayer();
+        PlayerInterface player1 = new Player();
+        PlayerInterface player2 = new MinMaxPlayer();
         Grid grid = new Grid(player1, player2);
 
         grid.addListener(this);

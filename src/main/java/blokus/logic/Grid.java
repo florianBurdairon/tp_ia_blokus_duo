@@ -23,6 +23,8 @@ public class Grid extends Thread implements Observable, Cloneable, Runnable {
 
     private long orangeGridBitMask = 0;
     private long purpleGridBitMask = 0;
+    private long startPointOrangeBitMask = BitMaskUtils.getBitMask(player1Start.x, player1Start.y);
+    private long startPointPurpleBitMask = BitMaskUtils.getBitMask(player2Start.x, player2Start.y);
 
     private final PlayerInterface p1;
     private final PlayerInterface p2;
@@ -38,6 +40,8 @@ public class Grid extends Thread implements Observable, Cloneable, Runnable {
     private PlayerColor playerTurn = PlayerColor.ORANGE;
     private boolean hasPlayed = false;
     private boolean isInterrupt = false;
+
+    // TODO: Complete BitMasks
 
     private Grid(Grid grid) {
         this.p1 = grid.p1;
@@ -85,6 +89,19 @@ public class Grid extends Thread implements Observable, Cloneable, Runnable {
         if (canFit(turn, playerTurn)) {
             placePieceInGrid(turn.getPiece(), turn.getTransform(), turn.getPos(), playerTurn);
             hasPlayed = true;
+
+            for (int i = 0; i < width; i++) {
+                for (int j = 0; j < height; j++) {
+                    if ((orangeGridBitMask & BitMaskUtils.getBitMask(i, j)) != 0) {
+                        grid[i][j] = PlayerColor.ORANGE;
+                    } else if ((purpleGridBitMask & BitMaskUtils.getBitMask(i, j)) != 0) {
+                        grid[i][j] = PlayerColor.PURPLE;
+                    } else {
+                        grid[i][j] = PlayerColor.EMPTY;
+                    }
+                }
+            }
+
             currentGrid = Utils.cloneGrid(grid);
             currentP1Pieces = new ArrayList<>(p1Pieces);
             currentP1Pieces.sort(Comparator.comparingInt(Piece::getId));
@@ -106,7 +123,12 @@ public class Grid extends Thread implements Observable, Cloneable, Runnable {
             int x = position.x + casePos.x;
             int y = position.y + casePos.y;
 //            if(x >= 0 && x < width && y >= 0 && y < height)
-            grid[x][y] = color;
+            if (color == PlayerColor.ORANGE) {
+                orangeGridBitMask |= BitMaskUtils.getBitMask(x, y);
+            } else {
+                purpleGridBitMask |= BitMaskUtils.getBitMask(x, y);
+            }
+            //grid[x][y] = color;
         }
         if (color == PlayerColor.ORANGE) {
             player1PlayedPieces.push(piece);
@@ -124,7 +146,11 @@ public class Grid extends Thread implements Observable, Cloneable, Runnable {
             int x = position.x + casePos.x;
             int y = position.y + casePos.y;
 //            if(x >= 0 && x < width && y >= 0 && y < height)
-            grid[x][y] = PlayerColor.EMPTY;
+            if (color == PlayerColor.ORANGE) {
+                orangeGridBitMask ^= BitMaskUtils.getBitMask(x, y);
+            } else {
+                purpleGridBitMask ^= BitMaskUtils.getBitMask(x, y);
+            }
         }
         if (color == PlayerColor.ORANGE) {
             player1PlayedPieces.pop();
@@ -139,11 +165,17 @@ public class Grid extends Thread implements Observable, Cloneable, Runnable {
         long pieceBitMask = BitMaskUtils.getTurnBitMask(turn);
         long cornerBitMask = BitMaskUtils.getCornerBitMask(turn);
         if (color == PlayerColor.ORANGE) {
+            if (player1PlayedPieces.isEmpty() && ((startPointOrangeBitMask & pieceBitMask) != 0)) {
+                return true;
+            }
             if ((pieceBitMask & orangeGridBitMask) != 0) {
                 return false;
             }
             return (cornerBitMask & orangeGridBitMask) != 0;
         } else {
+            if (player2PlayedPieces.isEmpty() && ((startPointPurpleBitMask & pieceBitMask) != 0)) {
+                return true;
+            }
             if ((pieceBitMask & purpleGridBitMask) != 0) {
                 return false;
             }
