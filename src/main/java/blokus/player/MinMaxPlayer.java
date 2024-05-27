@@ -26,7 +26,7 @@ public class MinMaxPlayer implements PlayerInterface {
             Thread.sleep(Math.max(0, processTime - (System.currentTimeMillis() - start)));
         } catch (InterruptedException ignored) {
         }
-        grid.placePiece(nextTurn.getPiece(), nextTurn.getPos(), nextTurn.getTransform());
+        grid.placePiece(nextTurn);
     }
 
     private int minmax(int depth, boolean maximizing, Grid.PlayerColor player) {

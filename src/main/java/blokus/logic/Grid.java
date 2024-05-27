@@ -1,6 +1,7 @@
 package blokus.logic;
 
 import blokus.player.PlayerInterface;
+import blokus.utils.BitMaskUtils;
 import blokus.utils.Utils;
 
 import java.util.*;
@@ -19,6 +20,9 @@ public class Grid extends Thread implements Observable, Cloneable, Runnable {
 
     private final PlayerColor[][] grid;
     public PlayerColor[][] currentGrid;
+
+    private long orangeGridBitMask = 0;
+    private long purpleGridBitMask = 0;
 
     private final PlayerInterface p1;
     private final PlayerInterface p2;
@@ -77,9 +81,9 @@ public class Grid extends Thread implements Observable, Cloneable, Runnable {
         }
     }
 
-    public boolean placePiece(Piece piece, Position position, Transform transform) {
-        if (canFit(Utils.transform(piece.getCases(), transform), position, playerTurn)) {
-            placePieceInGrid(piece, transform, position, playerTurn);
+    public boolean placePiece(Turn turn) {
+        if (canFit(turn, playerTurn)) {
+            placePieceInGrid(turn.getPiece(), turn.getTransform(), turn.getPos(), playerTurn);
             hasPlayed = true;
             currentGrid = Utils.cloneGrid(grid);
             currentP1Pieces = new ArrayList<>(p1Pieces);
@@ -131,53 +135,20 @@ public class Grid extends Thread implements Observable, Cloneable, Runnable {
         }
     }
 
-    public boolean canFit(List<Position> cases, Position position, PlayerColor color) {
-        boolean haveOneCorner = false;
-        try {
-            for (Position casePos : cases) {
-                int x = position.x + casePos.x;
-                int y = position.y + casePos.y;
-
-                // Check if piece is on the starting points
-                if(color == PlayerColor.ORANGE && player1PlayedPieces.isEmpty() && x == player1Start.x && y == player1Start.y) {
-                    return true;
-                }
-                if(color == PlayerColor.PURPLE && player2PlayedPieces.isEmpty() && x == player2Start.x && y == player2Start.y) {
-                    return true;
-                }
-
-                // Check if piece is on the grid
-                if (x < 0 || x >= width || y < 0 || y >= height) {
-                    return false;
-                }
-
-                // Check if piece is on a taken case
-                if (grid[x][y] != PlayerColor.EMPTY) {
-                    return false;
-                }
-
-                for(int i = -1; i < 2; i += 2) {
-                    // Check if piece has a border with a piece of the same color
-                    if ((x + i >= 0 && x + i < width && grid[x + i][y] == color) || (y + i >= 0 && y + i < height && grid[x][y + i] == color)) {
-                        return false;
-                    }
-                    for (int j = -1; j < 2; j +=2) {
-                        int xDiag = x + i;
-                        int yDiag = y + j;
-
-                        // Check if piece has a corner with a piece of the same color
-                        if (xDiag >= 0 && xDiag < width && yDiag >= 0 && yDiag < height) {
-                            if (grid[xDiag][yDiag] == color) {
-                                haveOneCorner = true;
-                            }
-                        }
-                    }
-                }
+    public boolean canFit(Turn turn, PlayerColor color) {
+        long pieceBitMask = BitMaskUtils.getTurnBitMask(turn);
+        long cornerBitMask = BitMaskUtils.getCornerBitMask(turn);
+        if (color == PlayerColor.ORANGE) {
+            if ((pieceBitMask & orangeGridBitMask) != 0) {
+                return false;
             }
-        } catch (ArrayIndexOutOfBoundsException ignored) {
-            /* Ignored */
+            return (cornerBitMask & orangeGridBitMask) != 0;
+        } else {
+            if ((pieceBitMask & purpleGridBitMask) != 0) {
+                return false;
+            }
+            return (cornerBitMask & purpleGridBitMask) != 0;
         }
-        return haveOneCorner;
     }
 
     public boolean canCurrentPlayerPlay() {
@@ -250,7 +221,7 @@ public class Grid extends Thread implements Observable, Cloneable, Runnable {
                 if (hasColorAround) {
                     for (Piece piece : pieces) {
                         for (Map.Entry<List<Position>, Transform> transformation : piece.getTransformations().entrySet()) {
-                            if (canFit(transformation.getKey(), new Position(x, y), color)) {
+                            if (canFit(new Turn(new Position(x, y), piece, transformation.getValue()), color)) {
                                 Turn possibleTurn = new Turn(new Position(x, y), piece, transformation.getValue());
                                 turns.add(possibleTurn);
                                 if (turns.size() >= nbResults) {

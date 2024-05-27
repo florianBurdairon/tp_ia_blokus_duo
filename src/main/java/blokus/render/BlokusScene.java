@@ -262,7 +262,8 @@ public class BlokusScene extends Application implements Observer {
                         Piece piecePlayed = pieceRenderer.getPiece();
 
                         Transform transform = new Transform(PlayerInput.getInstance().getRotation(), PlayerInput.getInstance().hasSymmetry());
-                        if (grid.placePiece(piecePlayed, pieceRenderer.getPos(), transform)) {
+                        Turn turn = new Turn(pieceRenderer.getPos(), piecePlayed, transform);
+                        if (grid.placePiece(turn)) {
                             System.out.println("Player played at " + pieceRenderer.getPos());
                             updatePieces();
                             canPlay = false;

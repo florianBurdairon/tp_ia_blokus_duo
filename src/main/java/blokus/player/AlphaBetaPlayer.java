@@ -26,7 +26,7 @@ public class AlphaBetaPlayer implements PlayerInterface {
             Thread.sleep(Math.max(0, processTime - (System.currentTimeMillis() - start)));
         } catch (InterruptedException ignored) {
         }
-        grid.placePiece(nextTurn.getPiece(), nextTurn.getPos(), nextTurn.getTransform());
+        grid.placePiece(nextTurn);
     }
 
     private int alphabeta(int depth, boolean maximizing, int alpha, int beta, Grid.PlayerColor player)

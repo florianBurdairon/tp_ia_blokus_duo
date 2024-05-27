@@ -35,7 +35,7 @@ public class MCTSPlayer implements PlayerInterface{
             } catch (InterruptedException ignored) {
             }
             System.out.println(color + " played: " + nextTurn);
-        } while (!grid.placePiece(nextTurn.getPiece(), nextTurn.getPos(), nextTurn.getTransform()) && !grid.isInterrupted());
+        } while (!grid.placePiece(nextTurn) && !grid.isInterrupted());
         //root = root.getChildren().get(nextTurn);
     }
 
