@@ -21,6 +21,9 @@ public class PieceChecker {
             for (Position p : piece.getCorners()) {
                 strings[p.x+3][p.y+3] = "O";
             }
+            for (Position p : piece.getSides()) {
+                strings[p.x+3][p.y+3] = "\"";
+            }
 
             System.out.println("Piece n°" + piece.getId());
             for(String[] s : strings) {

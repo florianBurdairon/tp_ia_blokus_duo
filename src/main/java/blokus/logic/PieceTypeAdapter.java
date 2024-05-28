@@ -24,6 +24,9 @@ public class PieceTypeAdapter extends TypeAdapter<Piece> {
         out.name("corners");
         Type listOfCornersObject = new TypeToken<ArrayList<Position>>() {}.getType();
         new Gson().toJson(piece.getCorners(), listOfCornersObject, out);
+        out.name("sides");
+        Type listOfSidesObject = new TypeToken<ArrayList<Position>>() {}.getType();
+        new Gson().toJson(piece.getCorners(), listOfSidesObject, out);
         out.endObject();
     }
 
@@ -34,6 +37,7 @@ public class PieceTypeAdapter extends TypeAdapter<Piece> {
         int caseNumber = 0;
         List<Position> cases = null;
         List<Position> corners = null;
+        List<Position> sides = null;
         while (in.hasNext()) {
             switch (in.nextName()) {
                 case "id":
@@ -50,9 +54,13 @@ public class PieceTypeAdapter extends TypeAdapter<Piece> {
                     Type listOfCornerObject = new TypeToken<ArrayList<Position>>() {}.getType();
                     corners = new Gson().fromJson(in, listOfCornerObject);
                     break;
+                case "sides":
+                    Type listOfCornersObject = new TypeToken<ArrayList<Position>>() {}.getType();
+                    sides = new Gson().fromJson(in, listOfCornersObject);
+                    break;
             }
         }
         in.endObject();
-        return new Piece(id, caseNumber, cases, corners);
+        return new Piece(id, caseNumber, cases, corners, sides);
     }
 }

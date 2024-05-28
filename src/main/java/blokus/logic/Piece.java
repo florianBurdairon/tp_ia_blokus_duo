@@ -16,13 +16,15 @@ public class Piece implements Serializable {
     private final int caseNumber;
     private final ArrayList<Position> cases;
     private final ArrayList<Position> corners;
+    private final ArrayList<Position> sides;
     private final Map<List<Position>, Transform> transformations = new HashMap<>();
 
-    public Piece(int id, int caseNumber, List<Position> cases, List<Position> corners) {
+    public Piece(int id, int caseNumber, List<Position> cases, List<Position> corners, List<Position> sides) {
         this.id = id;
         this.caseNumber = caseNumber;
         this.cases = new ArrayList<>(cases);
         this.corners = new ArrayList<>(corners);
+        this.sides = new ArrayList<>(sides);
 
         for(Grid.Angle angle : Grid.Angle.values()) {
             for (int i = 0; i < 2; i++) {
@@ -61,6 +63,14 @@ public class Piece implements Serializable {
     public List<Position> getCorners() {
         List<Position> clonedCases = new ArrayList<>();
         for (Position c : corners) {
+            clonedCases.add(c.clone());
+        }
+        return clonedCases;
+    }
+
+    public List<Position> getSides() {
+        List<Position> clonedCases = new ArrayList<>();
+        for (Position c : sides) {
             clonedCases.add(c.clone());
         }
         return clonedCases;
