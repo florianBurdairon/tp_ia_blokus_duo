@@ -44,9 +44,9 @@ public class MinMaxPlayer implements PlayerInterface {
                 return grid.getPlayerScore(player.next()) - grid.getPlayerScore(player);
             }
             for (Turn turn : possiblesTurns) {
-                grid.placePieceInGrid(turn.getPiece(), turn.getTransform(), turn.getPos(), player);
+                grid.placePieceInGrid(turn, player);
                 int newScore = minmax(depth - 1, false, player.next());
-                grid.removePieceInGrid(turn.getPiece(), turn.getTransform(), turn.getPos(), player);
+                grid.removePieceInGrid(turn, player);
                 if (newScore > score) {
                     score = newScore;
                     if (depth == MINIMAX_DEPTH) {
@@ -64,9 +64,9 @@ public class MinMaxPlayer implements PlayerInterface {
                 return grid.getPlayerScore(player) - grid.getPlayerScore(player.next());
             }
             for (Turn turn : possiblesTurns) {
-                grid.placePieceInGrid(turn.getPiece(), turn.getTransform(), turn.getPos(), player);
+                grid.placePieceInGrid(turn, player);
                 int newScore = minmax(depth - 1, true, player.next());
-                grid.removePieceInGrid(turn.getPiece(), turn.getTransform(), turn.getPos(), player);
+                grid.removePieceInGrid(turn, player);
                 if (newScore < score) {
                     score = newScore;
                 }

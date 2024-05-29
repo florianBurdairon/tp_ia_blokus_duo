@@ -5,46 +5,43 @@ import blokus.logic.Position;
 import blokus.logic.Turn;
 
 import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.List;
 
 public class BitMaskUtils {
 
+    public static final int offset = 3;
+
     public static BigInteger getBitMask(int x, int y) {
         BigInteger i = BigInteger.ONE;
-        return i.shiftLeft(x + y * Grid.width);
+        if (x >= Grid.width+offset || x < -offset || y >= Grid.height+offset || y < -offset) {
+            return BigInteger.ZERO;
+        }
+        return i.shiftLeft(x + offset + (y + offset) * (Grid.width+offset*2));
     }
 
-    public static BigInteger getTurnBitMask(Turn turn) {
-        BigInteger i = BigInteger.ZERO;
-        List<Position> cases = Utils.transform(turn.getPiece().getCases(), turn.getTransform());
-        for (Position pos : cases) {
-            i = i.or(getBitMask(turn.getPos().x + pos.x, turn.getPos().y + pos.y));
-        }
-        return i;
-    }
-
-    public static BigInteger getCasesBitMask(List<Position> cases, Position pos) {
-        BigInteger i = BigInteger.ZERO;
-        for (Position casePos : cases) {
-            i = i.or(getBitMask(pos.x + casePos.x, pos.y + casePos.y));
-        }
-        return i;
+    public static BigInteger getCasesBitMask(Turn turn) {
+        List<Position> positions = new ArrayList<>(Utils.transform(turn.getPiece().getCases(), turn.getTransform()));
+        positions.replaceAll(position -> position.add(turn.getPos()));
+        return getBitMask(positions);
     }
 
     public static BigInteger getCornerBitMask(Turn turn) {
-        BigInteger i = BigInteger.ZERO;
-        List<Position> cases = Utils.transform(turn.getPiece().getCorners(), turn.getTransform());
-        for (Position pos : cases) {
-            i = i.or(getBitMask(turn.getPos().x + pos.x, turn.getPos().y + pos.y));
-        }
-        return i;
+        List<Position> positions = new ArrayList<>(Utils.transform(turn.getPiece().getCorners(), turn.getTransform()));
+        positions.replaceAll(position -> position.add(turn.getPos()));
+        return getBitMask(positions);
     }
 
     public static BigInteger getSideBitMask(Turn turn) {
+        List<Position> positions = new ArrayList<>(Utils.transform(turn.getPiece().getSides(), turn.getTransform()));
+        positions.replaceAll(position -> position.add(turn.getPos()));
+        return getBitMask(positions);
+    }
+
+    private static BigInteger getBitMask(List<Position> pos) {
         BigInteger i = BigInteger.ZERO;
-        List<Position> cases = Utils.transform(turn.getPiece().getSides(), turn.getTransform());
-        for (Position pos : cases) {
-            i = i.or(getBitMask(turn.getPos().x + pos.x, turn.getPos().y + pos.y));
+        for (Position p : pos) {
+            i = i.or(getBitMask(p.x, p.y));
         }
         return i;
     }

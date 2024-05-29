@@ -42,16 +42,16 @@ public class Grid extends Thread implements Observable, Cloneable, Runnable {
     private boolean hasPlayed = false;
     private boolean isInterrupt = false;
 
-    // TODO: Complete BitMasks
-
     private Grid(Grid grid) {
         this.p1 = grid.p1;
         this.p2 = grid.p2;
-        this.grid = Utils.cloneGrid(grid.grid);
+        this.orangeGridBitMask = new BigInteger(grid.orangeGridBitMask.toString());
+        this.purpleGridBitMask = new BigInteger(grid.purpleGridBitMask.toString());
         this.p1Pieces = new ArrayList<>(List.copyOf(grid.p1Pieces));
         this.p2Pieces = new ArrayList<>(List.copyOf(grid.p2Pieces));
         this.player1PlayedPieces.addAll(grid.player1PlayedPieces.stream().toList());
         this.player2PlayedPieces.addAll(grid.player2PlayedPieces.stream().toList());
+        this.grid = Utils.cloneGrid(grid.grid);
     }
 
     public Grid(PlayerInterface p1, PlayerInterface p2) {
@@ -87,11 +87,10 @@ public class Grid extends Thread implements Observable, Cloneable, Runnable {
     }
 
     public boolean placePiece(Turn turn) {
+        System.out.println(turn);
         if (canFit(turn, playerTurn)) {
-            placePieceInGrid(turn.getPiece(), turn.getTransform(), turn.getPos(), playerTurn);
+            placePieceInGrid(turn, playerTurn);
             hasPlayed = true;
-
-            System.out.println(turn);
 
             for (int i = 0; i < width; i++) {
                 for (int j = 0; j < height; j++) {
@@ -119,12 +118,12 @@ public class Grid extends Thread implements Observable, Cloneable, Runnable {
         return false;
     }
 
-    public void placePieceInGrid(Piece piece, Transform transformation , Position position, PlayerColor color) {
+    public void placePieceInGrid(Turn turn, PlayerColor color) {
         //PlayerColor[][] newGrid = Utils.cloneGrid(grid);
-        List<Position> transform = Utils.transform(piece.getCases(), transformation);
+        List<Position> transform = Utils.transform(turn.getPiece().getCases(), turn.getTransform());
         for (Position casePos : transform) {
-            int x = position.x + casePos.x;
-            int y = position.y + casePos.y;
+            int x = turn.getPos().x + casePos.x;
+            int y = turn.getPos().y + casePos.y;
 //            if(x >= 0 && x < width && y >= 0 && y < height)
             if (color == PlayerColor.ORANGE) {
                 orangeGridBitMask = orangeGridBitMask.or(BitMaskUtils.getBitMask(x, y));
@@ -134,20 +133,20 @@ public class Grid extends Thread implements Observable, Cloneable, Runnable {
             //grid[x][y] = color;
         }
         if (color == PlayerColor.ORANGE) {
-            player1PlayedPieces.push(piece);
-            p1Pieces.remove(piece);
+            player1PlayedPieces.push(turn.getPiece());
+            p1Pieces.remove(turn.getPiece());
         } else {
-            player2PlayedPieces.push(piece);
-            p2Pieces.remove(piece);
+            player2PlayedPieces.push(turn.getPiece());
+            p2Pieces.remove(turn.getPiece());
         }
     }
 
-    public void removePieceInGrid(Piece piece, Transform transformation, Position position, PlayerColor color) {
+    public void removePieceInGrid(Turn turn, PlayerColor color) {
         //PlayerColor[][] newGrid = Utils.cloneGrid(grid);
-        List<Position> transform = Utils.transform(piece.getCases(), transformation);
+        List<Position> transform = Utils.transform(turn.getPiece().getCases(), turn.getTransform());
         for (Position casePos : transform) {
-            int x = position.x + casePos.x;
-            int y = position.y + casePos.y;
+            int x = turn.getPos().x + casePos.x;
+            int y = turn.getPos().y + casePos.y;
 //            if(x >= 0 && x < width && y >= 0 && y < height)
             if (color == PlayerColor.ORANGE) {
                 orangeGridBitMask = orangeGridBitMask.xor(BitMaskUtils.getBitMask(x, y));
@@ -157,21 +156,26 @@ public class Grid extends Thread implements Observable, Cloneable, Runnable {
         }
         if (color == PlayerColor.ORANGE) {
             player1PlayedPieces.pop();
-            p1Pieces.add(piece);
+            p1Pieces.add(turn.getPiece());
         } else {
             player2PlayedPieces.pop();
-            p2Pieces.add(piece);
+            p2Pieces.add(turn.getPiece());
         }
     }
 
-    //TODO: Fix overflow (over 14)
     public boolean canFit(Turn turn, PlayerColor color) {
-        BigInteger pieceBitMask = BitMaskUtils.getTurnBitMask(turn);
-        BigInteger cornerBitMask = BitMaskUtils.getCornerBitMask(turn);
-        BigInteger sidesBitMask = BitMaskUtils.getSideBitMask(turn);
+        BigInteger pieceBitMask = turn.getCasesMask();
+        BigInteger cornerBitMask = turn.getCornersMask();
+        BigInteger sidesBitMask = turn.getSidesMask();
         // Piece is on another piece
         if (!pieceBitMask.and(orangeGridBitMask).equals(BigInteger.ZERO) || !pieceBitMask.and(purpleGridBitMask).equals(BigInteger.ZERO)) {
             return false;
+        }
+        for(Position p : Utils.transform(turn.getPiece().getCases(), turn.getTransform())) {
+            Position pos = p.add(turn.getPos());
+            if (pos.x >= width || pos.y >= height || pos.x < 0 || pos.y < 0) {
+                return false;
+            }
         }
         if (color == PlayerColor.ORANGE) {
             // First piece and on start point
@@ -254,29 +258,17 @@ public class Grid extends Thread implements Observable, Cloneable, Runnable {
         boolean noNeedForColorAround = color == PlayerColor.ORANGE ?
                 grid[player1Start.x][player1Start.y] == PlayerColor.EMPTY
                 : grid[player2Start.x][player2Start.y] == PlayerColor.EMPTY;
-        for (int x = 0; x < width; x++) {
-            for (int y = 0; y < height; y++) {
-                boolean hasColorAround = noNeedForColorAround;
-                for (int xp = -3; xp < 3 && !hasColorAround; xp++) {
-                    for (int yp = -3; yp < 3; yp++) {
-                        if (x + xp >= 0 && x + xp < width && y + yp >= 0 && y + yp < height && grid[x + xp][y + yp] == color) {
-                            hasColorAround = true;
-                            break;
+        for (Piece piece : pieces.reversed()) {
+            for (Transform transformation : piece.getTransformations()) {
+                Turn t = new Turn(new Position(0, 0), piece, transformation);
+                for (int i = 0; i < Grid.height * Grid.width; i++) {
+                    if (canFit(t, color)) {
+                        turns.add(t.clone());
+                        if (turns.size() >= nbResults) {
+                            return turns;
                         }
                     }
-                }
-                if (hasColorAround) {
-                    for (Piece piece : pieces) {
-                        for (Map.Entry<List<Position>, Transform> transformation : piece.getTransformations().entrySet()) {
-                            if (canFit(new Turn(new Position(x, y), piece, transformation.getValue()), color)) {
-                                Turn possibleTurn = new Turn(new Position(x, y), piece, transformation.getValue());
-                                turns.add(possibleTurn);
-                                if (turns.size() >= nbResults) {
-                                    return turns;
-                                }
-                            }
-                        }
-                    }
+                    t.moveBy1();
                 }
             }
         }

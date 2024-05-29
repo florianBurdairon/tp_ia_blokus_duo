@@ -45,9 +45,9 @@ public class AlphaBetaPlayer implements PlayerInterface {
                 return grid.getPlayerScore(player.next()) - grid.getPlayerScore(player);
             }
             for (Turn turn : possiblesTurns) {
-                grid.placePieceInGrid(turn.getPiece(), turn.getTransform(), turn.getPos(), player);
+                grid.placePieceInGrid(turn, player);
                 int newScore = alphabeta(depth - 1, false, alpha, beta, player.next());
-                grid.removePieceInGrid(turn.getPiece(), turn.getTransform(), turn.getPos(), player);
+                grid.removePieceInGrid(turn, player);
                 if (newScore > score) {
                     score = newScore;
                     if (depth == ALPHABETA_DEPTH) {
@@ -69,9 +69,9 @@ public class AlphaBetaPlayer implements PlayerInterface {
                 return grid.getPlayerScore(player) - grid.getPlayerScore(player.next());
             }
             for (Turn turn : possiblesTurns) {
-                grid.placePieceInGrid(turn.getPiece(), turn.getTransform(), turn.getPos(), player);
+                grid.placePieceInGrid(turn, player);
                 int newScore = alphabeta(depth - 1, true, alpha, beta, player.next());
-                grid.removePieceInGrid(turn.getPiece(), turn.getTransform(), turn.getPos(), player);
+                grid.removePieceInGrid(turn, player);
                 if (newScore < score) {
                     score = newScore;
                 }

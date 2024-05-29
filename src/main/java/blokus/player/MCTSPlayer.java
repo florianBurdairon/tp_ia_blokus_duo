@@ -7,8 +7,8 @@ import blokus.logic.Turn;
 import java.util.*;
 
 public class MCTSPlayer implements PlayerInterface{
-    public static final int nbSimulations = 200;
-    public static final int nbIterations = 200000;
+    public static final int nbSimulations = 8;
+    public static final int nbIterations = 800;
 
     private static final int processTime = 500;
     public static final int c = 2;

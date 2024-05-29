@@ -17,7 +17,7 @@ public class Piece implements Serializable {
     private final ArrayList<Position> cases;
     private final ArrayList<Position> corners;
     private final ArrayList<Position> sides;
-    private final Map<List<Position>, Transform> transformations = new HashMap<>();
+    private final List<Transform> transformations = new ArrayList<>();
 
     public Piece(int id, int caseNumber, List<Position> cases, List<Position> corners, List<Position> sides) {
         this.id = id;
@@ -26,11 +26,12 @@ public class Piece implements Serializable {
         this.corners = new ArrayList<>(corners);
         this.sides = new ArrayList<>(sides);
 
+        Map<List<Position>, Transform> map = new HashMap<>();
         for(Grid.Angle angle : Grid.Angle.values()) {
             for (int i = 0; i < 2; i++) {
                 List<Position> transformation = Utils.transform(cases, angle, i==1);
                 boolean contains = false;
-                for (List<Position> transf : transformations.keySet())
+                for (List<Position> transf : map.keySet())
                 {
                     if (Utils.areSimilar(transf, transformation)) {
                         contains = true;
@@ -38,10 +39,11 @@ public class Piece implements Serializable {
                     }
                 }
                 if (!contains) {
-                    transformations.put(transformation, new Transform(angle, i==1));
+                    map.put(transformation, new Transform(angle, i==1));
                 }
             }
         }
+        this.transformations.addAll(map.values());
     }
 
     public int getId() {
@@ -76,7 +78,7 @@ public class Piece implements Serializable {
         return clonedCases;
     }
 
-    public Map<List<Position>, Transform> getTransformations() {
+    public List<Transform> getTransformations() {
         return transformations;
     }
 
