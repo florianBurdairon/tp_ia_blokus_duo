@@ -53,12 +53,6 @@ public class BlokusScene extends Application implements Observer {
             public AbstractPlayer getPlayer() {
                 return new MCTSPlayer();
             }
-        },
-        LearningAlphaBeta {
-            @Override
-            public AbstractPlayer getPlayer() {
-                return new LearningAlphaBeta();
-            }
         };
 
         public abstract AbstractPlayer getPlayer();
@@ -212,8 +206,7 @@ public class BlokusScene extends Application implements Observer {
                 PlayerTypes.Human,
                 PlayerTypes.MinMax,
                 PlayerTypes.AlphaBeta,
-                PlayerTypes.MCTS,
-                PlayerTypes.LearningAlphaBeta
+                PlayerTypes.MCTS
         );
         ComboBox<PlayerTypes> cbp1 = new ComboBox<>(options);
         cbp1.setValue(options.getFirst());
