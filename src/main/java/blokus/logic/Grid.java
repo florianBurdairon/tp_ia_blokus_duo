@@ -1,13 +1,20 @@
 package blokus.logic;
 
-import blokus.player.PlayerInterface;
+import blokus.player.AbstractPlayer;
+import blokus.utils.BitMaskUtils;
 import blokus.utils.Utils;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.math.BigInteger;
 import java.util.*;
 
 public class Grid extends Thread implements Observable, Cloneable, Runnable {
     public static final int width = 14;
     public static final int height = 14;
+
+    private static final String victoryOutputFile = "src/main/resources/victories.csv";
 
     public static final int bonusAllPiecesPlaced = 15;
     public static final int bonusSmallPiece = 5;
@@ -20,8 +27,13 @@ public class Grid extends Thread implements Observable, Cloneable, Runnable {
     private final PlayerColor[][] grid;
     public PlayerColor[][] currentGrid;
 
-    private final PlayerInterface p1;
-    private final PlayerInterface p2;
+    private BigInteger orangeGridBitMask = BigInteger.ZERO;
+    private BigInteger purpleGridBitMask = BigInteger.ZERO;
+    private final BigInteger startPointOrangeBitMask = BitMaskUtils.getBitMask(player1Start.x, player1Start.y);
+    private final BigInteger startPointPurpleBitMask = BitMaskUtils.getBitMask(player2Start.x, player2Start.y);
+
+    private final AbstractPlayer p1;
+    private final AbstractPlayer p2;
 
     private final List<Piece> p1Pieces;
     public List<Piece> currentP1Pieces;
@@ -38,14 +50,16 @@ public class Grid extends Thread implements Observable, Cloneable, Runnable {
     private Grid(Grid grid) {
         this.p1 = grid.p1;
         this.p2 = grid.p2;
-        this.grid = Utils.cloneGrid(grid.grid);
+        this.orangeGridBitMask = new BigInteger(grid.orangeGridBitMask.toString());
+        this.purpleGridBitMask = new BigInteger(grid.purpleGridBitMask.toString());
         this.p1Pieces = new ArrayList<>(List.copyOf(grid.p1Pieces));
         this.p2Pieces = new ArrayList<>(List.copyOf(grid.p2Pieces));
         this.player1PlayedPieces.addAll(grid.player1PlayedPieces.stream().toList());
         this.player2PlayedPieces.addAll(grid.player2PlayedPieces.stream().toList());
+        this.grid = Utils.cloneGrid(grid.grid);
     }
 
-    public Grid(PlayerInterface p1, PlayerInterface p2) {
+    public Grid(AbstractPlayer p1, AbstractPlayer p2) {
         grid = new PlayerColor[width][height];
         for (int x = 0; x < width; x++) {
             for (int y = 0; y < height; y++) {
@@ -70,17 +84,40 @@ public class Grid extends Thread implements Observable, Cloneable, Runnable {
             playerTurn = playerTurn.next();
         }
         if (!isInterrupt) {
+            PlayerColor winner = getWinner();
+            try {
+                BufferedWriter writer = new BufferedWriter(new FileWriter(victoryOutputFile, true));
+                writer.newLine();
+                writer.write(p1.playerType() + ";" + p2.playerType() + ";");
+                writer.write(winner==PlayerColor.ORANGE ? "1" : "2");
+                writer.flush();
+                writer.close();
+            } catch (IOException ignored) {}
+
             System.out.println("Game finished");
-            System.out.println("Winner is " + getWinner());
+            System.out.println("Winner is " + winner);
             System.out.println("Orange score: " + getTotalPlayerScore(PlayerColor.ORANGE));
             System.out.println("Purple score: " + getTotalPlayerScore(PlayerColor.PURPLE));
         }
     }
 
-    public boolean placePiece(Piece piece, Position position, Transform transform) {
-        if (canFit(Utils.transform(piece.getCases(), transform), position, playerTurn)) {
-            placePieceInGrid(piece, transform, position, playerTurn);
+    public boolean placePiece(Turn turn) {
+        if (canFit(turn, playerTurn)) {
+            placePieceInGrid(turn, playerTurn);
             hasPlayed = true;
+
+            for (int i = 0; i < width; i++) {
+                for (int j = 0; j < height; j++) {
+                    if (!orangeGridBitMask.and(BitMaskUtils.getBitMask(i, j)).equals(BigInteger.ZERO)) {
+                        grid[i][j] = PlayerColor.ORANGE;
+                    } else if (!purpleGridBitMask.and(BitMaskUtils.getBitMask(i, j)).equals(BigInteger.ZERO)) {
+                        grid[i][j] = PlayerColor.PURPLE;
+                    } else {
+                        grid[i][j] = PlayerColor.EMPTY;
+                    }
+                }
+            }
+
             currentGrid = Utils.cloneGrid(grid);
             currentP1Pieces = new ArrayList<>(p1Pieces);
             currentP1Pieces.sort(Comparator.comparingInt(Piece::getId));
@@ -95,89 +132,88 @@ public class Grid extends Thread implements Observable, Cloneable, Runnable {
         return false;
     }
 
-    public void placePieceInGrid(Piece piece, Transform transformation , Position position, PlayerColor color) {
+    public void placePieceInGrid(Turn turn, PlayerColor color) {
         //PlayerColor[][] newGrid = Utils.cloneGrid(grid);
-        List<Position> transform = Utils.transform(piece.getCases(), transformation);
+        List<Position> transform = Utils.transform(turn.getPiece().getCases(), turn.getTransform());
         for (Position casePos : transform) {
-            int x = position.x + casePos.x;
-            int y = position.y + casePos.y;
+            int x = turn.getPos().x + casePos.x;
+            int y = turn.getPos().y + casePos.y;
 //            if(x >= 0 && x < width && y >= 0 && y < height)
-            grid[x][y] = color;
+            if (color == PlayerColor.ORANGE) {
+                orangeGridBitMask = orangeGridBitMask.or(BitMaskUtils.getBitMask(x, y));
+            } else {
+                purpleGridBitMask = purpleGridBitMask.or(BitMaskUtils.getBitMask(x, y));
+            }
+            //grid[x][y] = color;
         }
         if (color == PlayerColor.ORANGE) {
-            player1PlayedPieces.push(piece);
-            p1Pieces.remove(piece);
+            player1PlayedPieces.push(turn.getPiece());
+            p1Pieces.remove(turn.getPiece());
         } else {
-            player2PlayedPieces.push(piece);
-            p2Pieces.remove(piece);
+            player2PlayedPieces.push(turn.getPiece());
+            p2Pieces.remove(turn.getPiece());
         }
     }
 
-    public void removePieceInGrid(Piece piece, Transform transformation, Position position, PlayerColor color) {
+    public void removePieceInGrid(Turn turn, PlayerColor color) {
         //PlayerColor[][] newGrid = Utils.cloneGrid(grid);
-        List<Position> transform = Utils.transform(piece.getCases(), transformation);
+        List<Position> transform = Utils.transform(turn.getPiece().getCases(), turn.getTransform());
         for (Position casePos : transform) {
-            int x = position.x + casePos.x;
-            int y = position.y + casePos.y;
+            int x = turn.getPos().x + casePos.x;
+            int y = turn.getPos().y + casePos.y;
 //            if(x >= 0 && x < width && y >= 0 && y < height)
-            grid[x][y] = PlayerColor.EMPTY;
+            if (color == PlayerColor.ORANGE) {
+                orangeGridBitMask = orangeGridBitMask.xor(BitMaskUtils.getBitMask(x, y));
+            } else {
+                purpleGridBitMask = purpleGridBitMask.xor(BitMaskUtils.getBitMask(x, y));
+            }
         }
         if (color == PlayerColor.ORANGE) {
             player1PlayedPieces.pop();
-            p1Pieces.add(piece);
+            p1Pieces.add(turn.getPiece());
         } else {
             player2PlayedPieces.pop();
-            p2Pieces.add(piece);
+            p2Pieces.add(turn.getPiece());
         }
     }
 
-    public boolean canFit(List<Position> cases, Position position, PlayerColor color) {
-        boolean haveOneCorner = false;
-        try {
-            for (Position casePos : cases) {
-                int x = position.x + casePos.x;
-                int y = position.y + casePos.y;
-
-                // Check if piece is on the starting points
-                if(color == PlayerColor.ORANGE && player1PlayedPieces.isEmpty() && x == player1Start.x && y == player1Start.y) {
-                    return true;
-                }
-                if(color == PlayerColor.PURPLE && player2PlayedPieces.isEmpty() && x == player2Start.x && y == player2Start.y) {
-                    return true;
-                }
-
-                // Check if piece is on the grid
-                if (x < 0 || x >= width || y < 0 || y >= height) {
-                    return false;
-                }
-
-                // Check if piece is on a taken case
-                if (grid[x][y] != PlayerColor.EMPTY) {
-                    return false;
-                }
-
-                for(int i = -1; i < 2; i += 2) {
-                    // Check if piece has a border with a piece of the same color
-                    if ((x + i >= 0 && x + i < width && grid[x + i][y] == color) || (y + i >= 0 && y + i < height && grid[x][y + i] == color)) {
-                        return false;
-                    }
-                    for (int j = -1; j < 2; j +=2) {
-                        int xDiag = x + i;
-                        int yDiag = y + j;
-
-                        // Check if piece has a corner with a piece of the same color
-                        if (xDiag >= 0 && xDiag < width && yDiag >= 0 && yDiag < height) {
-                            if (grid[xDiag][yDiag] == color) {
-                                haveOneCorner = true;
-                            }
-                        }
-                    }
-                }
-            }
-        } catch (ArrayIndexOutOfBoundsException ignored) {
-            /* Ignored */
+    public boolean canFit(Turn turn, PlayerColor color) {
+        BigInteger pieceBitMask = turn.getCasesMask();
+        BigInteger cornerBitMask = turn.getCornersMask();
+        BigInteger sidesBitMask = turn.getSidesMask();
+        // Piece is on another piece
+        if (!pieceBitMask.and(orangeGridBitMask).equals(BigInteger.ZERO) || !pieceBitMask.and(purpleGridBitMask).equals(BigInteger.ZERO)) {
+            return false;
         }
-        return haveOneCorner;
+        for(Position p : Utils.transform(turn.getPiece().getCases(), turn.getTransform())) {
+            Position pos = p.add(turn.getPos());
+            if (pos.x >= width || pos.y >= height || pos.x < 0 || pos.y < 0) {
+                return false;
+            }
+        }
+        if (color == PlayerColor.ORANGE) {
+            // First piece and on start point
+            if (player1PlayedPieces.isEmpty() && !startPointOrangeBitMask.and(pieceBitMask).equals(BigInteger.ZERO)) {
+                return true;
+            }
+            // Not right next to another
+            if(!sidesBitMask.and(orangeGridBitMask).equals(BigInteger.ZERO)) {
+                return false;
+            }
+            // Piece touches corner of another
+            return !cornerBitMask.and(orangeGridBitMask).equals(BigInteger.ZERO);
+        } else {
+            // First piece and on start point
+            if (player2PlayedPieces.isEmpty() && !startPointPurpleBitMask.and(pieceBitMask).equals(BigInteger.ZERO)) {
+                return true;
+            }
+            // Not right next to another
+            if(!sidesBitMask.and(purpleGridBitMask).equals(BigInteger.ZERO)) {
+                return false;
+            }
+            // Piece touches corner of another
+            return !cornerBitMask.and(purpleGridBitMask).equals(BigInteger.ZERO);
+        }
     }
 
     public boolean canCurrentPlayerPlay() {
@@ -200,8 +236,7 @@ public class Grid extends Thread implements Observable, Cloneable, Runnable {
             while (!hasPlayed && !isInterrupt) {
                 try {
                     Thread.sleep(100);
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
+                } catch (InterruptedException ignored) {
                 }
             }
             hasPlayed = false;
@@ -233,36 +268,40 @@ public class Grid extends Thread implements Observable, Cloneable, Runnable {
 
     public List<Turn> getPossibleTurns(PlayerColor color, List<Piece> pieces, int nbResults) {
         List<Turn> turns = new ArrayList<>();
-        boolean noNeedForColorAround = color == PlayerColor.ORANGE ?
-                grid[player1Start.x][player1Start.y] == PlayerColor.EMPTY
-                : grid[player2Start.x][player2Start.y] == PlayerColor.EMPTY;
-        for (int x = 0; x < width; x++) {
-            for (int y = 0; y < height; y++) {
-                boolean hasColorAround = noNeedForColorAround;
-                for (int xp = -3; xp < 3 && !hasColorAround; xp++) {
-                    for (int yp = -3; yp < 3; yp++) {
-                        if (x + xp >= 0 && x + xp < width && y + yp >= 0 && y + yp < height && grid[x + xp][y + yp] == color) {
-                            hasColorAround = true;
-                            break;
+        for (Piece piece : pieces) {
+            for (Transform transformation : piece.getTransformations()) {
+                Turn t = new Turn(new Position(0, 0), piece, transformation);
+                for (int i = 0; i < Grid.height * Grid.width; i++) {
+                    if (canFit(t, color)) {
+                        turns.add(t.clone());
+                        if (turns.size() >= nbResults) {
+                            return turns;
                         }
                     }
-                }
-                if (hasColorAround) {
-                    for (Piece piece : pieces) {
-                        for (Map.Entry<List<Position>, Transform> transformation : piece.getTransformations().entrySet()) {
-                            if (canFit(transformation.getKey(), new Position(x, y), color)) {
-                                Turn possibleTurn = new Turn(new Position(x, y), piece, transformation.getValue());
-                                turns.add(possibleTurn);
-                                if (turns.size() >= nbResults) {
-                                    return turns;
-                                }
-                            }
-                        }
-                    }
+                    t.moveBy1();
                 }
             }
         }
         return turns;
+    }
+
+    public Turn getRandomTurn(PlayerColor color, List<Piece> pieces) {
+        int pieceIndex = new Random().nextInt(pieces.size());
+        int transformationIndex = new Random().nextInt(pieces.get(pieceIndex).getTransformations().size());
+        for (int p = 0; p < pieces.size(); p++) {
+            Piece piece = pieces.get((pieceIndex + p) % pieces.size());
+            for (int t = 0; t < piece.getTransformations().size(); t++) {
+                Transform transformation = piece.getTransformations().get((transformationIndex + t) % piece.getTransformations().size());
+                Turn turn = new Turn(new Position(0, 0), piece, transformation);
+                for (int i = 0; i < Grid.height * Grid.width; i++) {
+                    if (canFit(turn, color)) {
+                        return turn;
+                    }
+                    turn.moveBy1();
+                }
+            }
+        }
+        return null;
     }
 
     public int getPlayerScore(PlayerColor player) {
@@ -281,7 +320,7 @@ public class Grid extends Thread implements Observable, Cloneable, Runnable {
         List<Piece> pieces = getPlayerPieces(player);
         int score = pieces.isEmpty() ? bonusAllPiecesPlaced : getPlayerScore(pieces);
         Stack<Piece> piecesPlayed = player == PlayerColor.ORANGE ? player1PlayedPieces : player2PlayedPieces;
-        if (piecesPlayed.peek().getCaseNumber() == 1) {
+        if (!piecesPlayed.isEmpty() && piecesPlayed.peek().getCaseNumber() == 1) {
             score += bonusSmallPiece;
         }
         return score;
@@ -303,15 +342,15 @@ public class Grid extends Thread implements Observable, Cloneable, Runnable {
             return p2Pieces;
     }
 
-    public PlayerInterface getP1() {
+    public AbstractPlayer getP1() {
         return p1;
     }
 
-    public PlayerInterface getP2() {
+    public AbstractPlayer getP2() {
         return p2;
     }
 
-    public PlayerInterface getCurrentPlayer() {
+    public AbstractPlayer getCurrentPlayer() {
         return playerTurn == PlayerColor.ORANGE ? p1 : p2;
     }
 

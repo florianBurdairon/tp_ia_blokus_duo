@@ -5,21 +5,59 @@ import blokus.player.*;
 import blokus.utils.Utils;
 import javafx.application.Application;
 import javafx.application.Platform;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.geometry.Point3D;
+import javafx.geometry.Pos;
 import javafx.scene.*;
+import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
 import javafx.scene.input.MouseButton;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.Pane;
+import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.PhongMaterial;
 import javafx.scene.shape.Box;
 import javafx.scene.shape.CullFace;
 import javafx.scene.shape.MeshView;
 import javafx.scene.shape.TriangleMesh;
+import javafx.scene.text.Text;
 import javafx.stage.Stage;
 
 import java.util.List;
 
 public class BlokusScene extends Application implements Observer {
+
+    private enum PlayerTypes {
+        Human {
+            @Override
+            public AbstractPlayer getPlayer() {
+                return new Player();
+            }
+        },
+        MinMax {
+            @Override
+            public AbstractPlayer getPlayer() {
+                return new MinMaxPlayer();
+            }
+        },
+        AlphaBeta {
+            @Override
+            public AbstractPlayer getPlayer() {
+                return new AlphaBetaPlayer();
+            }
+        },
+        MCTS {
+            @Override
+            public AbstractPlayer getPlayer() {
+                return new MCTSPlayer();
+            }
+        };
+
+        public abstract AbstractPlayer getPlayer();
+    }
+
     private Scene scene;
     private Grid grid;
     private GridRenderer gridRenderer;
@@ -39,6 +77,11 @@ public class BlokusScene extends Application implements Observer {
     final XForm cameraXForm2 = new XForm();
     final XForm cameraXForm3 = new XForm();
     final XForm world = new XForm();
+
+    private Thread gameThread;
+    private Text orangeScoreText;
+    private Text purpleScoreText;
+    private Text winnerText;
 
     private static final double CAMERA_INITIAL_DISTANCE = -1200;
     private static final double CAMERA_INITIAL_X_ANGLE = 35.0;
@@ -76,10 +119,9 @@ public class BlokusScene extends Application implements Observer {
     @Override
     public void start(Stage primaryStage) {
         BorderPane globalPane = new BorderPane();
-        scene = new Scene(globalPane, 1000, 800);
+        scene = new Scene(globalPane, 1200, 800);
 
-        setUpGame();
-
+        globalPane.setRight(setUpSettingsPane(primaryStage));
         globalPane.setCenter(setUp3DScene());
 
         handleKeyboard(scene);
@@ -88,26 +130,16 @@ public class BlokusScene extends Application implements Observer {
         primaryStage.setTitle("Blokus Duo");
         primaryStage.setScene(scene);
         primaryStage.show();
-
-        Thread gameThread = grid;
-        gameThread.start();
-        primaryStage.setOnCloseRequest(we -> {
-            if (gameThread.isAlive()) {
-                System.err.println("GAME THREAD INTERRUPTED");
-                gameThread.interrupt();
-            }
-        });
     }
 
-    private void setUpGame()
+    private void setUpGame(AbstractPlayer p1, AbstractPlayer p2)
     {
-        PlayerInterface player1 = new MCTSPlayer();
-        PlayerInterface player2 = new MCTSPlayer();
-        Grid grid = new Grid(player1, player2);
+        Grid grid = new Grid(p1, p2);
 
         grid.addListener(this);
 
         setGrid(grid);
+        renderGridInWorld();
     }
 
     private SubScene setUp3DScene(){
@@ -119,6 +151,14 @@ public class BlokusScene extends Application implements Observer {
         buildLight();
         buildAxes();
 
+        SubScene subScene = new SubScene(root, 1000, 800, true, SceneAntialiasing.BALANCED);
+        subScene.setFill(Color.SKYBLUE);
+        subScene.setCamera(camera);
+
+        return subScene;
+    }
+
+    private void renderGridInWorld() {
         world.getChildren().clear();
 
         gridRenderer = new GridRenderer(grid);
@@ -152,12 +192,54 @@ public class BlokusScene extends Application implements Observer {
         tableMeshView.setOnMouseEntered(e -> isHoverGrid = false);
 
         world.getChildren().add(tableMeshView);
+        world.requestFocus();
+    }
 
-        SubScene subScene = new SubScene(root, 1000, 800, true, SceneAntialiasing.BALANCED);
-        subScene.setFill(Color.SKYBLUE);
-        subScene.setCamera(camera);
+    private Pane setUpSettingsPane(Stage stage)
+    {
+        VBox pane = new VBox();
+        pane.setPrefSize(200, 1000);
+        pane.setSpacing(15);
+        pane.setAlignment(Pos.CENTER);
 
-        return subScene;
+        ObservableList<PlayerTypes> options = FXCollections.observableArrayList(
+                PlayerTypes.Human,
+                PlayerTypes.MinMax,
+                PlayerTypes.AlphaBeta,
+                PlayerTypes.MCTS
+        );
+        ComboBox<PlayerTypes> cbp1 = new ComboBox<>(options);
+        cbp1.setValue(options.getFirst());
+        ComboBox<PlayerTypes> cbp2 = new ComboBox<>(options);
+        cbp2.setValue(options.getFirst());
+        pane.getChildren().addAll(cbp1, cbp2);
+
+        Button startGameButton = new Button();
+        startGameButton.setText("Start Game");
+        startGameButton.setOnMouseClicked(e -> {
+            if (gameThread != null) {
+                gameThread.interrupt();
+            }
+            setUpGame(cbp1.getValue().getPlayer(), cbp2.getValue().getPlayer());
+            update();
+            gameThread = grid;
+            gameThread.start();
+            stage.setOnCloseRequest(we -> {
+                if (gameThread.isAlive()) {
+                    System.err.println("GAME THREAD INTERRUPTED");
+                    gameThread.interrupt();
+                }
+            });
+        });
+        pane.getChildren().add(startGameButton);
+
+        winnerText = new Text("");
+        orangeScoreText = new Text("");
+        purpleScoreText = new Text("");
+
+        pane.getChildren().addAll(winnerText, orangeScoreText, purpleScoreText);
+
+        return pane;
     }
 
     private void buildCamera() {
@@ -262,7 +344,8 @@ public class BlokusScene extends Application implements Observer {
                         Piece piecePlayed = pieceRenderer.getPiece();
 
                         Transform transform = new Transform(PlayerInput.getInstance().getRotation(), PlayerInput.getInstance().hasSymmetry());
-                        if (grid.placePiece(piecePlayed, pieceRenderer.getPos(), transform)) {
+                        Turn turn = new Turn(pieceRenderer.getPos(), piecePlayed, transform);
+                        if (grid.placePiece(turn)) {
                             System.out.println("Player played at " + pieceRenderer.getPos());
                             updatePieces();
                             canPlay = false;
@@ -290,7 +373,6 @@ public class BlokusScene extends Application implements Observer {
             mousePosY = me.getSceneY();
             mouseOldX = me.getSceneX();
             mouseOldY = me.getSceneY();
-
         });
         scene.setOnScroll(se -> {
             if (se.isShiftDown())
@@ -334,6 +416,18 @@ public class BlokusScene extends Application implements Observer {
                 case X:
                     axisGroup.setVisible(!axisGroup.isVisible());
                     break;
+                case UP:
+                    PlayerInput.getInstance().setMousePos(PlayerInput.getInstance().getMousePos().add(new Position(0, -1)));
+                    break;
+                case DOWN:
+                    PlayerInput.getInstance().setMousePos(PlayerInput.getInstance().getMousePos().add(new Position(0, 1)));
+                    break;
+                case LEFT:
+                    PlayerInput.getInstance().setMousePos(PlayerInput.getInstance().getMousePos().add(new Position(-1, 0)));
+                    break;
+                case RIGHT:
+                    PlayerInput.getInstance().setMousePos(PlayerInput.getInstance().getMousePos().add(new Position(1, 0)));
+                    break;
             }
         });
     }
@@ -344,6 +438,11 @@ public class BlokusScene extends Application implements Observer {
         Platform.runLater(() -> {
             gridRenderer.updateAll();
             updatePieces();
+            orangeScoreText.setText("Orange score: " + grid.getTotalPlayerScore(Grid.PlayerColor.ORANGE));
+            purpleScoreText.setText("Purple score: " + grid.getTotalPlayerScore(Grid.PlayerColor.PURPLE));
+            if (grid.isGameFinished()) {
+                winnerText.setText("The winner is player " + grid.getWinner());
+            }
         });
     }
 }

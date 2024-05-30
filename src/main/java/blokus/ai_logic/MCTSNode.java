@@ -45,7 +45,7 @@ public class MCTSNode {
         if (hasPossible()) {
             // Get random possible turn
             Turn turn = possible.get(new Random().nextInt(possible.size()));
-            grid.placePieceInGrid(turn.getPiece(), turn.getTransform(), turn.getPos(), color);
+            grid.placePieceInGrid(turn, color);
 
             // Create new child
             MCTSNode child = new MCTSNode(grid, color.next());
@@ -71,7 +71,7 @@ public class MCTSNode {
                     throw new RuntimeException(e);
                 }
             }
-            grid.removePieceInGrid(turn.getPiece(), turn.getTransform(), turn.getPos(), color);
+            grid.removePieceInGrid(turn, color);
 
             // Update node
             possible.remove(turn);
@@ -97,9 +97,9 @@ public class MCTSNode {
             int childSuccess = selectedChild.getNbSuccess();
 
             // Expand child
-            grid.placePieceInGrid(turn.getPiece(), turn.getTransform(), turn.getPos(), color);
+            grid.placePieceInGrid(turn, color);
             boolean isExpanded = selectedChild.expand(grid, depth + 1);
-            grid.removePieceInGrid(turn.getPiece(), turn.getTransform(), turn.getPos(), color);
+            grid.removePieceInGrid(turn, color);
 
             // Update node
             nbSuccess += selectedChild.getNbSuccess() - childSuccess;
@@ -110,17 +110,16 @@ public class MCTSNode {
     }
 
     public int simulate(Grid grid, Grid.PlayerColor player) {
-        List<Turn> possibleTurns = grid.getPossibleTurns(player, grid.getPlayerPieces(player));
-        if (possibleTurns.isEmpty() && grid.getPossibleTurns(player.next(), grid.getPlayerPieces(player.next()), 1).isEmpty()) {
+        Turn randomTurn = grid.getRandomTurn(player, grid.getPlayerPieces(player));
+        if (randomTurn == null && grid.getRandomTurn(player.next(), grid.getPlayerPieces(player.next())) == null) {
             Grid.PlayerColor winner = grid.getWinner();
             return winner == MCTSPlayer.currentPlayer ? 1 : winner == MCTSPlayer.currentPlayer.next() ? -1 : 0;
         }
         else {
-            if (!possibleTurns.isEmpty()) {
-                Turn turn = possibleTurns.get(new Random().nextInt(possibleTurns.size()));
-                grid.placePieceInGrid(turn.getPiece(), turn.getTransform(), turn.getPos(), player);
+            if (randomTurn != null) {
+                grid.placePieceInGrid(randomTurn, player);
                 int victoire = simulate(grid, player.next());
-                grid.removePieceInGrid(turn.getPiece(), turn.getTransform(), turn.getPos(), player);
+                grid.removePieceInGrid(randomTurn, player);
                 return victoire;
             } else {
                 return simulate(grid, player.next());
