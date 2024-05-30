@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Random;
 
 public class AlphaBetaPlayer extends AbstractPlayer {
-    private static final int ALPHABETA_DEPTH = 2;
+    protected static int ALPHABETA_DEPTH = 3;
 
     private static final int processTime = 500;
 
@@ -18,6 +18,10 @@ public class AlphaBetaPlayer extends AbstractPlayer {
 
     public AlphaBetaPlayer() {
         super("alphabeta-execution-time.csv");
+    }
+
+    public AlphaBetaPlayer(String filename) {
+        super(filename);
     }
 
     @Override
