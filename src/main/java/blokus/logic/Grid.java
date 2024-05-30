@@ -268,7 +268,7 @@ public class Grid extends Thread implements Observable, Cloneable, Runnable {
 
     public List<Turn> getPossibleTurns(PlayerColor color, List<Piece> pieces, int nbResults) {
         List<Turn> turns = new ArrayList<>();
-        for (Piece piece : pieces.reversed()) {
+        for (Piece piece : pieces) {
             for (Transform transformation : piece.getTransformations()) {
                 Turn t = new Turn(new Position(0, 0), piece, transformation);
                 for (int i = 0; i < Grid.height * Grid.width; i++) {
@@ -320,7 +320,7 @@ public class Grid extends Thread implements Observable, Cloneable, Runnable {
         List<Piece> pieces = getPlayerPieces(player);
         int score = pieces.isEmpty() ? bonusAllPiecesPlaced : getPlayerScore(pieces);
         Stack<Piece> piecesPlayed = player == PlayerColor.ORANGE ? player1PlayedPieces : player2PlayedPieces;
-        if (piecesPlayed.peek().getCaseNumber() == 1) {
+        if (!piecesPlayed.isEmpty() && piecesPlayed.peek().getCaseNumber() == 1) {
             score += bonusSmallPiece;
         }
         return score;

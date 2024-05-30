@@ -7,11 +7,11 @@ import blokus.logic.Turn;
 import java.util.*;
 
 public class MCTSPlayer extends AbstractPlayer {
-    public static final int nbSimulations = 1;
+    public static final int nbSimulations = 2;
     public static final int nbIterations = 1000;
 
     private static final int processTime = 500;
-    public static final int c = 2;
+    public static final double c = 2;
 
     private MCTSNode root = null;
     public static Grid.PlayerColor currentPlayer;
@@ -39,8 +39,27 @@ public class MCTSPlayer extends AbstractPlayer {
         } catch (InterruptedException ignored) {
         }
         //root = root.getChildren().get(nextTurn);
+
+        int maxDepth = findMaxDepth(root, 0);
+        System.out.println("C: " + c);
+        System.out.println("Max depth: " + maxDepth);
+        System.out.println("Nb children: " + root.getChildren().size());
+        System.out.println("Nb children in theory: " + grid.getPossibleTurns(color, grid.getPlayerPieces(color)).size());
+
         grid.placePiece(nextTurn);
+
         return executionTime;
+    }
+
+    private int findMaxDepth(MCTSNode node, int depth) {
+        int maxDepth = depth;
+        for (MCTSNode n : node.getChildren().values().stream().toList()) {
+            int newDepth = findMaxDepth(n, depth + 1);
+            if (newDepth > maxDepth) {
+                maxDepth = newDepth;
+            }
+        }
+        return maxDepth;
     }
 
     @Override

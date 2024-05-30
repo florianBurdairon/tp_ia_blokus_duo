@@ -445,8 +445,8 @@ public class BlokusScene extends Application implements Observer {
         Platform.runLater(() -> {
             gridRenderer.updateAll();
             updatePieces();
-            orangeScoreText.setText("Orange score: " + grid.getPlayerScore(Grid.PlayerColor.ORANGE));
-            purpleScoreText.setText("Purple score: " + grid.getPlayerScore(Grid.PlayerColor.PURPLE));
+            orangeScoreText.setText("Orange score: " + grid.getTotalPlayerScore(Grid.PlayerColor.ORANGE));
+            purpleScoreText.setText("Purple score: " + grid.getTotalPlayerScore(Grid.PlayerColor.PURPLE));
             if (grid.isGameFinished()) {
                 winnerText.setText("The winner is player " + grid.getWinner());
             }

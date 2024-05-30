@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Random;
 
 public class AlphaBetaPlayer extends AbstractPlayer {
-    protected static int ALPHABETA_DEPTH = 3;
+    protected static int ALPHABETA_DEPTH = 2;
 
     private static final int processTime = 500;
 

@@ -4,8 +4,9 @@ import blokus.logic.Grid;
 
 public class LearningAlphaBeta extends AlphaBetaPlayer{
 
-    private final int initialValue = -1;
-    private final int increment = 1;
+    private final int initialValue = 1;
+    private float totalIncrement = 0.0f;
+    private final float increment = 0.3f;
 
     public LearningAlphaBeta()
     {
@@ -15,7 +16,8 @@ public class LearningAlphaBeta extends AlphaBetaPlayer{
 
     @Override
     public long playOnGrid(Grid grid) {
-        ALPHABETA_DEPTH += increment;
+        totalIncrement += increment;
+        ALPHABETA_DEPTH = initialValue + (int)Math.floor(totalIncrement);
         return super.playOnGrid(grid);
     }
 }
