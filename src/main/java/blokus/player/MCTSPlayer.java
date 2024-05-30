@@ -6,37 +6,46 @@ import blokus.logic.Turn;
 
 import java.util.*;
 
-public class MCTSPlayer implements PlayerInterface{
-    public static final int nbSimulations = 8;
-    public static final int nbIterations = 800;
+public class MCTSPlayer extends AbstractPlayer {
+    public static final int nbSimulations = 1;
+    public static final int nbIterations = 1000;
 
     private static final int processTime = 500;
     public static final int c = 2;
 
-    private Grid.PlayerColor color;
     private MCTSNode root = null;
     public static Grid.PlayerColor currentPlayer;
 
     private Turn nextTurn;
 
+    public MCTSPlayer() {
+        super("mcts-execution-time.csv");
+    }
+
     @Override
-    public void play(Grid grid) {
+    public long playOnGrid(Grid grid) {
         long start = System.currentTimeMillis();
 
-        color = grid.getCurrentPlayerColor();
+        Grid.PlayerColor color = grid.getCurrentPlayerColor();
         currentPlayer = color;
         //if (root == null)
         root = new MCTSNode(grid, color);
-        do {
-            MCTS(grid);
+        MCTS(grid);
 
-            try {
-                Thread.sleep(Math.max(0, processTime - (System.currentTimeMillis() - start)));
-            } catch (InterruptedException ignored) {
-            }
-            System.out.println(color + " played: " + nextTurn);
-        } while (!grid.placePiece(nextTurn) && !grid.isInterrupted());
+        long executionTime = (System.currentTimeMillis() - start);
+        try {
+            System.out.println("Execution time: " + executionTime + "ms");
+            Thread.sleep(Math.max(0, processTime - executionTime));
+        } catch (InterruptedException ignored) {
+        }
         //root = root.getChildren().get(nextTurn);
+        grid.placePiece(nextTurn);
+        return executionTime;
+    }
+
+    @Override
+    public String playerType() {
+        return "mcts";
     }
 
     public void MCTS(Grid grid) {

@@ -7,8 +7,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-public class MinMaxPlayer implements PlayerInterface {
-    private static final int MINIMAX_DEPTH = 2;
+public class MinMaxPlayer extends AbstractPlayer {
+    private static final int MINMAX_DEPTH = 2;
 
     private static final int processTime = 500;
 
@@ -16,17 +16,29 @@ public class MinMaxPlayer implements PlayerInterface {
 
     private Turn nextTurn;
 
+    public MinMaxPlayer() {
+        super("minmax-execution-time.csv");
+    }
+
     @Override
-    public void play(Grid grid) {
+    public long playOnGrid(Grid grid) {
         long start = System.currentTimeMillis();
         this.grid = grid;
-        minmax(MINIMAX_DEPTH, true, grid.getCurrentPlayerColor());
+        minmax(MINMAX_DEPTH, true, grid.getCurrentPlayerColor());
 
+        long executionTime = (System.currentTimeMillis() - start);
         try {
-            Thread.sleep(Math.max(0, processTime - (System.currentTimeMillis() - start)));
+            System.out.println("Execution time: " + executionTime + "ms");
+            Thread.sleep(Math.max(0, processTime - executionTime));
         } catch (InterruptedException ignored) {
         }
         grid.placePiece(nextTurn);
+        return executionTime;
+    }
+
+    @Override
+    public String playerType() {
+        return "minmax";
     }
 
     private int minmax(int depth, boolean maximizing, Grid.PlayerColor player) {
@@ -49,12 +61,12 @@ public class MinMaxPlayer implements PlayerInterface {
                 grid.removePieceInGrid(turn, player);
                 if (newScore > score) {
                     score = newScore;
-                    if (depth == MINIMAX_DEPTH) {
+                    if (depth == MINMAX_DEPTH) {
                         bestTurns.clear();
                         bestTurns.add(turn);
                     }
                 }
-                else if (newScore == score && depth == MINIMAX_DEPTH) {
+                else if (newScore == score && depth == MINMAX_DEPTH) {
                     bestTurns.add(turn);
                 }
             }
@@ -73,7 +85,7 @@ public class MinMaxPlayer implements PlayerInterface {
             }
 
         }
-        if (depth == MINIMAX_DEPTH) {
+        if (depth == MINMAX_DEPTH) {
             int index = new Random().nextInt(bestTurns.size());
             nextTurn = bestTurns.get(index);
         }

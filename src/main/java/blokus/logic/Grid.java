@@ -1,15 +1,20 @@
 package blokus.logic;
 
-import blokus.player.PlayerInterface;
+import blokus.player.AbstractPlayer;
 import blokus.utils.BitMaskUtils;
 import blokus.utils.Utils;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.math.BigInteger;
 import java.util.*;
 
 public class Grid extends Thread implements Observable, Cloneable, Runnable {
     public static final int width = 14;
     public static final int height = 14;
+
+    private static final String victoryOutputFile = "src/main/resources/victories.csv";
 
     public static final int bonusAllPiecesPlaced = 15;
     public static final int bonusSmallPiece = 5;
@@ -27,8 +32,8 @@ public class Grid extends Thread implements Observable, Cloneable, Runnable {
     private final BigInteger startPointOrangeBitMask = BitMaskUtils.getBitMask(player1Start.x, player1Start.y);
     private final BigInteger startPointPurpleBitMask = BitMaskUtils.getBitMask(player2Start.x, player2Start.y);
 
-    private final PlayerInterface p1;
-    private final PlayerInterface p2;
+    private final AbstractPlayer p1;
+    private final AbstractPlayer p2;
 
     private final List<Piece> p1Pieces;
     public List<Piece> currentP1Pieces;
@@ -54,7 +59,7 @@ public class Grid extends Thread implements Observable, Cloneable, Runnable {
         this.grid = Utils.cloneGrid(grid.grid);
     }
 
-    public Grid(PlayerInterface p1, PlayerInterface p2) {
+    public Grid(AbstractPlayer p1, AbstractPlayer p2) {
         grid = new PlayerColor[width][height];
         for (int x = 0; x < width; x++) {
             for (int y = 0; y < height; y++) {
@@ -79,15 +84,24 @@ public class Grid extends Thread implements Observable, Cloneable, Runnable {
             playerTurn = playerTurn.next();
         }
         if (!isInterrupt) {
+            PlayerColor winner = getWinner();
+            try {
+                BufferedWriter writer = new BufferedWriter(new FileWriter(victoryOutputFile, true));
+                writer.newLine();
+                writer.write(p1.playerType() + ";" + p2.playerType() + ";");
+                writer.write(winner==PlayerColor.ORANGE ? "1" : "2");
+                writer.flush();
+                writer.close();
+            } catch (IOException ignored) {}
+
             System.out.println("Game finished");
-            System.out.println("Winner is " + getWinner());
+            System.out.println("Winner is " + winner);
             System.out.println("Orange score: " + getTotalPlayerScore(PlayerColor.ORANGE));
             System.out.println("Purple score: " + getTotalPlayerScore(PlayerColor.PURPLE));
         }
     }
 
     public boolean placePiece(Turn turn) {
-        System.out.println(turn);
         if (canFit(turn, playerTurn)) {
             placePieceInGrid(turn, playerTurn);
             hasPlayed = true;
@@ -328,15 +342,15 @@ public class Grid extends Thread implements Observable, Cloneable, Runnable {
             return p2Pieces;
     }
 
-    public PlayerInterface getP1() {
+    public AbstractPlayer getP1() {
         return p1;
     }
 
-    public PlayerInterface getP2() {
+    public AbstractPlayer getP2() {
         return p2;
     }
 
-    public PlayerInterface getCurrentPlayer() {
+    public AbstractPlayer getCurrentPlayer() {
         return playerTurn == PlayerColor.ORANGE ? p1 : p2;
     }
 

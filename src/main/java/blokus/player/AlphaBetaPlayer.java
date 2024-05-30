@@ -7,8 +7,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-public class AlphaBetaPlayer implements PlayerInterface {
-    private static final int ALPHABETA_DEPTH = 1;
+public class AlphaBetaPlayer extends AbstractPlayer {
+    private static final int ALPHABETA_DEPTH = 2;
 
     private static final int processTime = 500;
 
@@ -16,17 +16,29 @@ public class AlphaBetaPlayer implements PlayerInterface {
 
     private Turn nextTurn;
 
+    public AlphaBetaPlayer() {
+        super("alphabeta-execution-time.csv");
+    }
+
     @Override
-    public void play(Grid grid) {
+    public long playOnGrid(Grid grid) {
         long start = System.currentTimeMillis();
         this.grid = grid;
         alphabeta(ALPHABETA_DEPTH, true, -Integer.MAX_VALUE, Integer.MAX_VALUE, grid.getCurrentPlayerColor());
 
+        long executionTime = System.currentTimeMillis() - start;
         try {
-            Thread.sleep(Math.max(0, processTime - (System.currentTimeMillis() - start)));
+            System.out.println("Execution time: " + executionTime + "ms");
+            Thread.sleep(Math.max(0, processTime - executionTime));
         } catch (InterruptedException ignored) {
         }
         grid.placePiece(nextTurn);
+        return executionTime;
+    }
+
+    @Override
+    public String playerType() {
+        return "alphabeta";
     }
 
     private int alphabeta(int depth, boolean maximizing, int alpha, int beta, Grid.PlayerColor player)

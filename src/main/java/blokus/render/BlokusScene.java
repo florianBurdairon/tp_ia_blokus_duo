@@ -8,6 +8,7 @@ import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Point3D;
+import javafx.geometry.Pos;
 import javafx.scene.*;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
@@ -21,6 +22,7 @@ import javafx.scene.shape.Box;
 import javafx.scene.shape.CullFace;
 import javafx.scene.shape.MeshView;
 import javafx.scene.shape.TriangleMesh;
+import javafx.scene.text.Text;
 import javafx.stage.Stage;
 
 import java.util.List;
@@ -30,30 +32,30 @@ public class BlokusScene extends Application implements Observer {
     private enum PlayerTypes {
         Human {
             @Override
-            public PlayerInterface getPlayer() {
+            public AbstractPlayer getPlayer() {
                 return new Player();
             }
         },
         MinMax {
             @Override
-            public PlayerInterface getPlayer() {
+            public AbstractPlayer getPlayer() {
                 return new MinMaxPlayer();
             }
         },
         AlphaBeta {
             @Override
-            public PlayerInterface getPlayer() {
+            public AbstractPlayer getPlayer() {
                 return new AlphaBetaPlayer();
             }
         },
         MCTS {
             @Override
-            public PlayerInterface getPlayer() {
+            public AbstractPlayer getPlayer() {
                 return new MCTSPlayer();
             }
         };
 
-        public abstract PlayerInterface getPlayer();
+        public abstract AbstractPlayer getPlayer();
     }
 
     private Scene scene;
@@ -77,6 +79,9 @@ public class BlokusScene extends Application implements Observer {
     final XForm world = new XForm();
 
     private Thread gameThread;
+    private Text orangeScoreText;
+    private Text purpleScoreText;
+    private Text winnerText;
 
     private static final double CAMERA_INITIAL_DISTANCE = -1200;
     private static final double CAMERA_INITIAL_X_ANGLE = 35.0;
@@ -127,7 +132,7 @@ public class BlokusScene extends Application implements Observer {
         primaryStage.show();
     }
 
-    private void setUpGame(PlayerInterface p1, PlayerInterface p2)
+    private void setUpGame(AbstractPlayer p1, AbstractPlayer p2)
     {
         Grid grid = new Grid(p1, p2);
 
@@ -187,12 +192,15 @@ public class BlokusScene extends Application implements Observer {
         tableMeshView.setOnMouseEntered(e -> isHoverGrid = false);
 
         world.getChildren().add(tableMeshView);
+        world.requestFocus();
     }
 
     private Pane setUpSettingsPane(Stage stage)
     {
         VBox pane = new VBox();
         pane.setPrefSize(200, 1000);
+        pane.setSpacing(15);
+        pane.setAlignment(Pos.CENTER);
 
         ObservableList<PlayerTypes> options = FXCollections.observableArrayList(
                 PlayerTypes.Human,
@@ -213,6 +221,7 @@ public class BlokusScene extends Application implements Observer {
                 gameThread.interrupt();
             }
             setUpGame(cbp1.getValue().getPlayer(), cbp2.getValue().getPlayer());
+            update();
             gameThread = grid;
             gameThread.start();
             stage.setOnCloseRequest(we -> {
@@ -222,8 +231,13 @@ public class BlokusScene extends Application implements Observer {
                 }
             });
         });
-
         pane.getChildren().add(startGameButton);
+
+        winnerText = new Text("");
+        orangeScoreText = new Text("");
+        purpleScoreText = new Text("");
+
+        pane.getChildren().addAll(winnerText, orangeScoreText, purpleScoreText);
 
         return pane;
     }
@@ -359,7 +373,6 @@ public class BlokusScene extends Application implements Observer {
             mousePosY = me.getSceneY();
             mouseOldX = me.getSceneX();
             mouseOldY = me.getSceneY();
-
         });
         scene.setOnScroll(se -> {
             if (se.isShiftDown())
@@ -425,6 +438,11 @@ public class BlokusScene extends Application implements Observer {
         Platform.runLater(() -> {
             gridRenderer.updateAll();
             updatePieces();
+            orangeScoreText.setText("Orange score: " + grid.getPlayerScore(Grid.PlayerColor.ORANGE));
+            purpleScoreText.setText("Purple score: " + grid.getPlayerScore(Grid.PlayerColor.PURPLE));
+            if (grid.isGameFinished()) {
+                winnerText.setText("The winner is player " + grid.getWinner());
+            }
         });
     }
 }
