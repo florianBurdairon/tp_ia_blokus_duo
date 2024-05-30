@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Random;
 
 public class AlphaBetaPlayer implements PlayerInterface {
-    private static final int ALPHABETA_DEPTH = 2;
+    private static final int ALPHABETA_DEPTH = 1;
 
     private static final int processTime = 500;
 

@@ -222,8 +222,7 @@ public class Grid extends Thread implements Observable, Cloneable, Runnable {
             while (!hasPlayed && !isInterrupt) {
                 try {
                     Thread.sleep(100);
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
+                } catch (InterruptedException ignored) {
                 }
             }
             hasPlayed = false;
@@ -255,9 +254,6 @@ public class Grid extends Thread implements Observable, Cloneable, Runnable {
 
     public List<Turn> getPossibleTurns(PlayerColor color, List<Piece> pieces, int nbResults) {
         List<Turn> turns = new ArrayList<>();
-        boolean noNeedForColorAround = color == PlayerColor.ORANGE ?
-                grid[player1Start.x][player1Start.y] == PlayerColor.EMPTY
-                : grid[player2Start.x][player2Start.y] == PlayerColor.EMPTY;
         for (Piece piece : pieces.reversed()) {
             for (Transform transformation : piece.getTransformations()) {
                 Turn t = new Turn(new Position(0, 0), piece, transformation);
@@ -273,6 +269,25 @@ public class Grid extends Thread implements Observable, Cloneable, Runnable {
             }
         }
         return turns;
+    }
+
+    public Turn getRandomTurn(PlayerColor color, List<Piece> pieces) {
+        int pieceIndex = new Random().nextInt(pieces.size());
+        int transformationIndex = new Random().nextInt(pieces.get(pieceIndex).getTransformations().size());
+        for (int p = 0; p < pieces.size(); p++) {
+            Piece piece = pieces.get((pieceIndex + p) % pieces.size());
+            for (int t = 0; t < piece.getTransformations().size(); t++) {
+                Transform transformation = piece.getTransformations().get((transformationIndex + t) % piece.getTransformations().size());
+                Turn turn = new Turn(new Position(0, 0), piece, transformation);
+                for (int i = 0; i < Grid.height * Grid.width; i++) {
+                    if (canFit(turn, color)) {
+                        return turn;
+                    }
+                    turn.moveBy1();
+                }
+            }
+        }
+        return null;
     }
 
     public int getPlayerScore(PlayerColor player) {

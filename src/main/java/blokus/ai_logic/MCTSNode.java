@@ -110,17 +110,16 @@ public class MCTSNode {
     }
 
     public int simulate(Grid grid, Grid.PlayerColor player) {
-        List<Turn> possibleTurns = grid.getPossibleTurns(player, grid.getPlayerPieces(player));
-        if (possibleTurns.isEmpty() && grid.getPossibleTurns(player.next(), grid.getPlayerPieces(player.next()), 1).isEmpty()) {
+        Turn randomTurn = grid.getRandomTurn(player, grid.getPlayerPieces(player));
+        if (randomTurn == null && grid.getRandomTurn(player.next(), grid.getPlayerPieces(player.next())) == null) {
             Grid.PlayerColor winner = grid.getWinner();
             return winner == MCTSPlayer.currentPlayer ? 1 : winner == MCTSPlayer.currentPlayer.next() ? -1 : 0;
         }
         else {
-            if (!possibleTurns.isEmpty()) {
-                Turn turn = possibleTurns.get(new Random().nextInt(possibleTurns.size()));
-                grid.placePieceInGrid(turn, player);
+            if (randomTurn != null) {
+                grid.placePieceInGrid(randomTurn, player);
                 int victoire = simulate(grid, player.next());
-                grid.removePieceInGrid(turn, player);
+                grid.removePieceInGrid(randomTurn, player);
                 return victoire;
             } else {
                 return simulate(grid, player.next());
