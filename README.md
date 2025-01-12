@@ -50,7 +50,3 @@ This project is a Blokus Duo game (2 players) that follows the same rules as the
 - `src/main/java/blokus/player` - Player-related classes and AI algorithms
 - `src/main/java/blokus/utils` - Utility classes
 - `src/main/java/blokus/ai_logic` - logic for MCTS
-
-## License
-
-This project is licensed under the MIT License.
